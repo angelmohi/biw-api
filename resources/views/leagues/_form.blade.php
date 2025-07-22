@@ -23,6 +23,13 @@
         </div>
 
         <div class="row mt-3">
+            <div class="col-12 col-sm-12 col-md-6 form-group">
+                <label for="f-start_date">Start Date</label>
+                <input type="date" class="form-control" id="f-start_date" name="start_date" value="{{ $league->start_date ?? '' }}">
+            </div>
+        </div>
+
+        <div class="row mt-3">
             <div class="col-12 col-sm-12 col-md-12 form-group">
                 <label for="f-bearer_token">Bearer Token</label>
                 <textarea class="form-control" id="f-bearer_token" name="bearer_token">{{ $league->bearer_token ?? '' }}</textarea>

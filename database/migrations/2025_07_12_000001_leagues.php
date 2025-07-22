@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('bearer_user');
             $table->text('bearer_league');
             $table->text('bearer_token');
+            $table->date('start_date')->nullable();
 
             $table->timestamps();
             $table->softDeletes();

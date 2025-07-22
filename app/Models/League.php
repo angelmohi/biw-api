@@ -24,6 +24,7 @@ class League extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
+        'start_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
     ];
@@ -34,6 +35,18 @@ class League extends Model
     public function biwengerUsers()
     {
         return $this->hasMany(BiwengerUser::class, 'league_id', 'id');
+    }
+
+    /**
+     * Get all transactions for this league through its users
+     */
+    public function transactions()
+    {
+        return Transaction::whereHas('userFrom', function($query) {
+            $query->where('league_id', $this->id);
+        })->orWhereHas('userTo', function($query) {
+            $query->where('league_id', $this->id);
+        })->with(['userFrom', 'userTo', 'type']);
     }
 
     /**

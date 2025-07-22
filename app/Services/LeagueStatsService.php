@@ -23,7 +23,7 @@ class LeagueStatsService
      */
     public function refresh(League $league): bool
     {
-        $to = strtotime('2025-07-01');
+        $to = $league->start_date ? strtotime($league->start_date) : time();
 
         $lastTransaction = Transaction::orderBy('id', 'desc')->first();
         $to = $lastTransaction ? strtotime($lastTransaction->date) : $to;

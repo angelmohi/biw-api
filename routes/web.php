@@ -26,4 +26,5 @@ Route::prefix('leagues')->controller(LeagueController::class)->group(function() 
     Route::post('/', 'store')->name('leagues.store');
     Route::get('/{league}', 'show')->name('leagues.show');
     Route::put('/{league}', 'update')->name('leagues.update');
+    Route::get('/{league}/transactions', 'getTransactions')->name('leagues.transactions');
 });
