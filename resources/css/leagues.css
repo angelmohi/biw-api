@@ -1,0 +1,46 @@
+/* Estilos para la vista de ligas */
+
+/* Efecto hover para las cards de las ligas */
+.col-md-4 .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1) !important;
+}
+
+/* Estilos para badges del ranking (legacy) */
+.ranking .badge {
+    min-width: 30px;
+}
+
+/* Colores de las medallas por posición */
+.medal-1 {
+    color: #FFD700; /* Oro */
+}
+
+.medal-2 {
+    color: #C0C0C0; /* Plata */
+}
+
+.medal-3 {
+    color: #CD7F32; /* Bronce */
+}
+
+/* Header de las cards de liga con gradiente */
+.league-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border-radius: 0.375rem 0.375rem 0 0 !important;
+    color: white !important;
+}
+
+/* Transición suave para las cards */
+.col-md-4 .card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* Estilo para el contenedor de ranking */
+.ranking .d-flex {
+    transition: background-color 0.2s ease-in-out;
+}
+
+.ranking .d-flex:hover {
+    background-color: #e9ecef !important;
+}
