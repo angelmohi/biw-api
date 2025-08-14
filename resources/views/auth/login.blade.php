@@ -17,10 +17,10 @@
                             @csrf
                             <div class="input-group mb-3">
                                 <span class="input-group-text">
-                                    <i class="fas fa-envelope text-secondary"></i>
+                                    <i class="fas fa-user text-secondary"></i>
                                 </span>
-                                <input id="email" name="email" class="form-control @error('email') is-invalid @enderror" type="email"
-                                    placeholder="Email" autofocus>
+                                <input id="email" name="email" class="form-control @error('email') is-invalid @enderror" type="text"
+                                    placeholder="Nombre de usuario" autofocus>
                                 @error('email')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>

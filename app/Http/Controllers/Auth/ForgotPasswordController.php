@@ -16,6 +16,10 @@ class ForgotPasswordController extends Controller
     | includes a trait which assists in sending these notifications from
     | your application to your users. Feel free to explore this trait.
     |
+    | NOTE: Since the system now uses usernames instead of emails in the 'email' field,
+    | password reset functionality via email will not work unless additional
+    | email field is implemented or alternative reset method is used.
+    |
     */
 
     use SendsPasswordResetEmails;
