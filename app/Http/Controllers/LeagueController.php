@@ -7,6 +7,7 @@ use App\Models\League;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class LeagueController extends Controller
 {
@@ -14,6 +15,7 @@ class LeagueController extends Controller
 
     public function __construct(BiwengerApiInterface $biwengerApi)
     {
+        $this->middleware('auth');
         $this->biwengerApi = $biwengerApi;
     }
     /**
@@ -21,9 +23,22 @@ class LeagueController extends Controller
      */
     public function index() : View
     {
-        $leagues = League::with(['biwengerUsers' => function($query) {
-            $query->orderBy('position', 'asc');
-        }])->get();
+        $user = Auth::user();
+        
+        // Full Administrators can see all leagues
+        if ($user->isFullAdministrator()) {
+            $leagues = League::with(['biwengerUsers' => function($query) {
+                $query->orderBy('position', 'asc');
+            }])->get();
+        } else {
+            // Get only leagues that the user has access to
+            $leagues = League::whereHas('users', function($query) use ($user) {
+                $query->where('users.id', $user->id)
+                      ->where('user_leagues.is_active', true);
+            })->with(['biwengerUsers' => function($query) {
+                $query->orderBy('position', 'asc');
+            }])->get();
+        }
 
         return view('leagues.index', compact('leagues'));
     }
@@ -41,6 +56,13 @@ class LeagueController extends Controller
      */
     public function show(League $league) : View
     {
+        $user = Auth::user();
+        
+        // Check if user has access to this league
+        if (!$league->hasUser($user->id)) {
+            abort(403, 'No tienes acceso a esta liga.');
+        }
+
         $league->load(['biwengerUsers' => function($query) {
             $query->orderBy('position', 'asc')
                   ->with('balances');
@@ -54,6 +76,20 @@ class LeagueController extends Controller
      */
     public function getTransactions(Request $request, League $league)
     {
+        $user = Auth::user();
+        
+        // Check if user has access to this league
+        if (!$league->hasUser($user->id)) {
+            return response()->json(['error' => 'No tienes acceso a esta liga.'], 403);
+        }
+
+        // Check if this is a mobile request
+        $isMobile = $request->has('mobile') && $request->get('mobile');
+        
+        if ($isMobile) {
+            return $this->getMobileTransactions($request, $league);
+        }
+
         $dataTablesRequest = new \App\Helpers\DataTablesRequest($request);
         
         // Base query for transactions
@@ -221,5 +257,61 @@ class LeagueController extends Controller
             flashDangerMessage('Error al actualizar la liga: ' . $e->getMessage());
             return jsonIframeRedirection(route('leagues.show', $league->id));
         }
+    }
+
+    /**
+     * Get transactions data for mobile view
+     */
+    private function getMobileTransactions(Request $request, League $league)
+    {
+        $length = $request->get('length', 20); // Default 20 for mobile
+        
+        $query = $league->transactions()->orderBy('date', 'desc');
+        
+        // Apply limit
+        $transactions = $query->limit($length)->get();
+        
+        // Format data for mobile cards
+        $data = [];
+        foreach ($transactions as $transaction) {
+            // Type badge (simplified for mobile)
+            $typeBadge = match($transaction->type_id) {
+                1 => '<span class="badge bg-primary">Traspaso</span>',
+                2 => '<span class="badge bg-success">Mercado</span>',
+                3 => '<span class="badge bg-info">Jornada</span>',
+                default => '<span class="badge bg-secondary">Desconocido</span>'
+            };
+            
+            // Amount formatting
+            $amount = $transaction->amount 
+                ? '<span class="fw-bold text-success">' . number_format($transaction->amount, 0, ',', '.') . '€</span>'
+                : '<span class="text-muted">-</span>';
+            
+            // User from
+            $userFrom = $transaction->userFrom 
+                ? $transaction->userFrom->name
+                : 'Mercado';
+            
+            // User to
+            $userTo = $transaction->userTo 
+                ? $transaction->userTo->name
+                : 'Mercado';
+            
+            $data[] = [
+                $typeBadge,
+                $transaction->description ?? '-',
+                $amount,
+                $transaction->player_name ?? '',
+                $userFrom,
+                $userTo,
+                $transaction->date->format('d/m/Y H:i')
+            ];
+        }
+        
+        return response()->json([
+            'data' => $data,
+            'recordsTotal' => $league->transactions()->count(),
+            'recordsFiltered' => $league->transactions()->count()
+        ]);
     }
 }

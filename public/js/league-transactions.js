@@ -1,12 +1,110 @@
 $(document).ready(function() {
     let transactionsTable;
+    let isMobile = window.innerWidth < 992; // Bootstrap lg breakpoint
     
-    // Initialize DataTable when transactions tab is shown
+    // Initialize DataTable when transactions tab is shown (desktop)
     $('button[data-bs-target="#transactions"]').on('shown.bs.tab', function (e) {
-        if (!transactionsTable) {
+        if (!transactionsTable && !isMobile) {
             initializeTransactionsTable();
         }
     });
+    
+    // Initialize mobile transactions when mobile tab is shown
+    $('button[data-bs-target="#mobile-transactions"]').on('shown.bs.tab', function (e) {
+        if (isMobile) {
+            loadMobileTransactions();
+        }
+    });
+    
+    // Handle window resize
+    $(window).on('resize', function() {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth < 992;
+        
+        // If switching between mobile and desktop, reload content if tab is active
+        if (wasMobile !== isMobile) {
+            if ($('button[data-bs-target="#transactions"]').hasClass('active') || $('button[data-bs-target="#mobile-transactions"]').hasClass('active')) {
+                if (isMobile) {
+                    if (transactionsTable) {
+                        transactionsTable.destroy();
+                        transactionsTable = null;
+                    }
+                    loadMobileTransactions();
+                } else {
+                    $('#transactionsMobile').empty();
+                    if (!transactionsTable) {
+                        initializeTransactionsTable();
+                    }
+                }
+            }
+        }
+    });
+    
+    function loadMobileTransactions() {
+        const container = $('#transactionsMobile');
+        container.html('<div class="text-center py-4"><div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div></div>');
+        
+        $.ajax({
+            url: window.location.pathname + '/transactions',
+            type: 'GET',
+            data: {
+                mobile: true,
+                length: 50 // Load more for mobile initially
+            },
+            success: function(response) {
+                let html = '';
+                
+                if (response.data && response.data.length > 0) {
+                    response.data.forEach(function(transaction) {
+                        html += `
+                            <div class="card mb-3 transaction-card">
+                                <div class="card-body p-3">
+                                    <div class="d-flex justify-content-between align-items-start mb-2">
+                                        <div class="transaction-type">
+                                            ${transaction[0]}
+                                        </div>
+                                        <div class="transaction-amount text-end">
+                                            ${transaction[2]}
+                                        </div>
+                                    </div>
+                                    <div class="transaction-description mb-2">
+                                        <strong>${transaction[1]}</strong>
+                                    </div>
+                                    ${transaction[3] ? `<div class="transaction-player mb-2"><i class="fas fa-user me-1"></i>${transaction[3]}</div>` : ''}
+                                    <div class="row text-muted small">
+                                        ${transaction[4] ? `<div class="col-6"><strong>De:</strong> ${transaction[4]}</div>` : ''}
+                                        ${transaction[5] ? `<div class="col-6"><strong>Para:</strong> ${transaction[5]}</div>` : ''}
+                                    </div>
+                                    <div class="transaction-date text-muted small mt-2">
+                                        <i class="fas fa-clock me-1"></i>${transaction[6]}
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-exchange-alt fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay transacciones</h5>
+                            <p class="text-muted">Las transacciones aparecerán aquí cuando se realicen movimientos</p>
+                        </div>
+                    `;
+                }
+                
+                container.html(html);
+            },
+            error: function() {
+                container.html(`
+                    <div class="text-center py-5">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                        <h5 class="text-muted">Error al cargar transacciones</h5>
+                        <p class="text-muted">No se pudieron cargar las transacciones</p>
+                    </div>
+                `);
+            }
+        });
+    }
     
     function initializeTransactionsTable() {
         transactionsTable = $('#transactionsTable').DataTable({

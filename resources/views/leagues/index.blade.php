@@ -8,11 +8,13 @@
             <div>
                 <h4 class="card-title align-middle d-inline pt-2">Ligas</h4>
             </div>
+            @if(Auth::user()->isFullAdministrator())
             <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with buttons">
                 <a class="btn btn-outline-primary" type="button" href="{{ route('leagues.create') }}">
                     <i class="fas fa-plus me-2"></i> Crear liga
                 </a>
             </div>
+            @endif
         </div>
         <hr>
         
@@ -67,8 +69,16 @@
         @else
             <div class="text-center py-5">
                 <i class="fas fa-trophy fa-3x text-muted mb-3"></i>
-                <h5 class="text-muted">No hay ligas creadas</h5>
-                <p class="text-muted">Crea tu primera liga para comenzar</p>
+                @if(Auth::user()->isFullAdministrator())
+                    <h5 class="text-muted">No hay ligas creadas</h5>
+                    <p class="text-muted">Crea tu primera liga para comenzar</p>
+                    <a href="{{ route('leagues.create') }}" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Crear Liga
+                    </a>
+                @else
+                    <h5 class="text-muted">No tienes acceso a ninguna liga</h5>
+                    <p class="text-muted">Contacta con el administrador para que te asigne acceso a las ligas.</p>
+                @endif
             </div>
         @endif
     </div>

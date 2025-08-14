@@ -502,3 +502,286 @@ table tr.negative-cash:hover {
         min-width: 28px !important;
     }
 }
+
+/* Mobile transaction cards */
+.transaction-card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.transaction-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.transaction-type {
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.transaction-amount {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #198754;
+}
+
+.transaction-description {
+    color: #495057;
+    line-height: 1.4;
+}
+
+.transaction-player {
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.transaction-date {
+    font-size: 0.8rem;
+    text-align: right;
+}
+
+@media (max-width: 576px) {
+    .transaction-card .card-body {
+        padding: 1rem !important;
+    }
+    
+    .transaction-type {
+        font-size: 0.8rem;
+    }
+    
+    .transaction-amount {
+        font-size: 0.9rem;
+    }
+}
+
+/* Mobile ranking cards */
+.ranking-card {
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+    border-left: 4px solid #28a745;
+}
+
+.ranking-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+
+.ranking-card-negative {
+    border-left-color: #dc3545;
+    background-color: #fff5f5;
+}
+
+.ranking-position {
+    min-width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.position-badge {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+    color: white;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+}
+
+.player-avatar-mobile {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #6c757d;
+    font-weight: bold;
+    font-size: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.player-avatar-mobile img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.player-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+.points-display {
+    text-align: center;
+}
+
+.points-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #0d6efd;
+    line-height: 1;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.stat-item {
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin-bottom: 0.25rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #212529;
+}
+
+/* Special styling for top 3 positions on mobile */
+.ranking-card:has(.medal-1) {
+    border-left-color: #FFD700;
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.05) 0%, transparent 100%);
+}
+
+.ranking-card:has(.medal-2) {
+    border-left-color: #C0C0C0;
+    background: linear-gradient(135deg, rgba(192, 192, 192, 0.05) 0%, transparent 100%);
+}
+
+.ranking-card:has(.medal-3) {
+    border-left-color: #CD7F32;
+    background: linear-gradient(135deg, rgba(205, 127, 50, 0.05) 0%, transparent 100%);
+}
+
+@media (max-width: 576px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .stat-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
+        padding: 0.5rem;
+        background-color: #f8f9fa;
+        border-radius: 0.5rem;
+    }
+    
+    .stat-label {
+        margin-bottom: 0;
+        text-transform: none;
+        font-size: 0.8rem;
+    }
+    
+    .stat-value {
+        font-size: 0.85rem;
+    }
+    
+    .points-value {
+        font-size: 1.25rem;
+    }
+}
+
+/* Mobile sort controls removed */
+
+/* Enhanced medal styles for mobile */
+.medal-1, .medal-2, .medal-3 {
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+/* Position badge enhancements */
+.position-badge {
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    border: 2px solid white;
+}
+
+/* Animation for card reordering */
+.ranking-card {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+.ranking-card.sorting {
+    opacity: 0.7;
+    transform: scale(0.98);
+}
+
+/* Mobile tabs navigation */
+.mobile-tabs-nav {
+    margin-bottom: 1.5rem;
+}
+
+.mobile-tabs-nav .nav-pills {
+    gap: 0.5rem; /* Espacio entre pestañas */
+}
+
+.mobile-tabs-nav .nav-pills .nav-item {
+    flex: 1;
+}
+
+.mobile-tabs-nav .nav-pills .nav-link {
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-weight: 500;
+    color: #6c757d;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    transition: all 0.2s ease;
+    text-align: center;
+    position: relative;
+    width: 100%;
+}
+
+.mobile-tabs-nav .nav-pills .nav-link:hover {
+    background-color: #e9ecef;
+    color: #495057;
+    transform: translateY(-1px);
+}
+
+.mobile-tabs-nav .nav-pills .nav-link.active {
+    background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%);
+    color: white;
+    border-color: #0d6efd;
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.3);
+    transform: translateY(-2px);
+}
+
+.mobile-tabs-nav .nav-pills .nav-link i {
+    margin-right: 0.5rem;
+}
+
+@media (max-width: 576px) {
+    .mobile-tabs-nav .nav-pills .nav-link {
+        padding: 0.6rem 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    .mobile-tabs-nav .nav-pills .nav-link i {
+        margin-right: 0.25rem;
+    }
+}

@@ -53,9 +53,17 @@
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('leagues.index') }}">
                     <i class="nav-icon fas fa-trophy"></i>
-                    Ligas
+                    Mis Ligas
                 </a>
             </li>
+            @if(Auth::user()->canManageAccess())
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('user-leagues.manage') }}">
+                    <i class="nav-icon fas fa-users-cog"></i>
+                    Gestionar Accesos
+                </a>
+            </li>
+            @endif
         </ul>
     </div>
     @endif

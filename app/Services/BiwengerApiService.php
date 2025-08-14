@@ -217,8 +217,10 @@ class BiwengerApiService implements BiwengerApiInterface
                         } else {
                             // If we find a transaction older than $to, 
                             // we can stop processing as transactions are ordered by date
-                            $foundOlderTransaction = true;
-                            break;
+                            if ($transaction['type'] != 'text') {
+                                $foundOlderTransaction = true;
+                                break;
+                            }
                         }
                     }
                     $totalTransactions = count($data['data']);

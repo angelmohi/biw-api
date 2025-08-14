@@ -25,8 +25,8 @@ class LeagueStatsService
     {
         $to = $league->start_date ? strtotime($league->start_date) : time();
 
-        $lastTransaction = Transaction::orderBy('id', 'desc')->first();
-        $to = $lastTransaction ? strtotime($lastTransaction->date) : $to;
+        $lastTransaction = $league->transactions()->orderBy('id', 'desc')->first() ?? null;
+        $to = $lastTransaction ? strtotime($lastTransaction->date) - 250000 : $to;
 
         // Get the players from the Biwenger API
         $players = $this->biwengerApi->getPlayers($league);

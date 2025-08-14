@@ -1,54 +1,76 @@
 document.addEventListener('DOMContentLoaded', function() {
     const table = document.getElementById('rankingTable');
+    let isMobile = window.innerWidth < 992; // Bootstrap lg breakpoint
     
-    if (!table) {
+    if (!table && !isMobile) {
         return;
     }
     
-    const headers = table.querySelectorAll('th.sortable');
-    let currentSort = { column: null, direction: null };
+    // Handle window resize
+    window.addEventListener('resize', function() {
+        const wasMobile = isMobile;
+        isMobile = window.innerWidth < 992;
+        
+        // If switching between mobile and desktop, handle visibility
+        if (wasMobile !== isMobile) {
+            handleResponsiveChange();
+        }
+    });
+    
+    function handleResponsiveChange() {
+        // This function can be used if we need to dynamically switch content
+        // For now, CSS handles the visibility with d-none d-lg-block and d-lg-none
+    }
+    
+    // Desktop table sorting (only if table exists)
+    if (table) {
+        const headers = table.querySelectorAll('th.sortable');
+        let currentSort = { column: null, direction: null };
 
-    headers.forEach(header => {
-        header.addEventListener('click', function() {
-            const column = this.getAttribute('data-column');
-            let direction = 'asc';
+        headers.forEach(header => {
+            header.addEventListener('click', function() {
+                const column = this.getAttribute('data-column');
+                let direction = 'asc';
 
-            if (currentSort.column === column && currentSort.direction === 'asc') {
-                direction = 'desc';
-            }
+                if (currentSort.column === column && currentSort.direction === 'asc') {
+                    direction = 'desc';
+                }
 
-            headers.forEach(h => {
-                h.classList.remove('sorted-asc', 'sorted-desc');
+                headers.forEach(h => {
+                    h.classList.remove('sorted-asc', 'sorted-desc');
+                });
+
+                this.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+
+                currentSort = { column, direction };
+
+                sortTable(column, direction);
+            });
+        });
+
+        function sortTable(column, direction) {
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+
+            rows.sort((a, b) => {
+                let aVal, bVal;
+
+                if (column === 'name') {
+                    aVal = a.getAttribute('data-name').toLowerCase();
+                    bVal = b.getAttribute('data-name').toLowerCase();
+                    return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                } else {
+                    aVal = parseFloat(a.getAttribute('data-' + column.replace('_', '-'))) || 0;
+                    bVal = parseFloat(b.getAttribute('data-' + column.replace('_', '-'))) || 0;
+                    return direction === 'asc' ? aVal - bVal : bVal - aVal;
+                }
             });
 
-            this.classList.add(direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
-
-            currentSort = { column, direction };
-
-            sortTable(column, direction);
-        });
-    });
-
-    function sortTable(column, direction) {
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr'));
-
-        rows.sort((a, b) => {
-            let aVal, bVal;
-
-            if (column === 'name') {
-                aVal = a.getAttribute('data-name').toLowerCase();
-                bVal = b.getAttribute('data-name').toLowerCase();
-                return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
-            } else {
-                aVal = parseFloat(a.getAttribute('data-' + column.replace('_', '-'))) || 0;
-                bVal = parseFloat(b.getAttribute('data-' + column.replace('_', '-'))) || 0;
-                return direction === 'asc' ? aVal - bVal : bVal - aVal;
-            }
-        });
-
-        rows.forEach(row => tbody.appendChild(row));
+            rows.forEach(row => tbody.appendChild(row));
+        }
     }
+    
+    // Mobile ranking functionality removed - no sorting controls for mobile
 });
 
 $(document).ready(function() {

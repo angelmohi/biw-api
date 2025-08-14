@@ -20,6 +20,7 @@
                         <a href="{{ route('leagues.index') }}" class="btn btn-light">
                             <i class="fas fa-arrow-left me-2"></i>Volver
                         </a>
+                        @if(Auth::user()->isFullAdministrator())
                         <form method="POST" action="{{ route('leagues.update', $league->id) }}" class="d-inline ms-2">
                             @csrf
                             @method('PUT')
@@ -33,6 +34,7 @@
                                 </span>
                             </button>
                         </form>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -81,7 +83,8 @@
     </div>
 
     <div class="col-12">
-        <div class="card">
+        <!-- Desktop card wrapper -->
+        <div class="card d-none d-lg-block">
             <div class="card-header">
                 <ul class="nav nav-tabs card-header-tabs" id="leagueTabs" role="tablist">
                     <li class="nav-item" role="presentation">
@@ -92,6 +95,11 @@
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" id="transactions-tab" data-bs-toggle="tab" data-bs-target="#transactions" type="button" role="tab" aria-controls="transactions" aria-selected="false">
                             <i class="fas fa-exchange-alt me-2"></i>Transacciones
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="user-transfers-tab" data-bs-toggle="tab" data-bs-target="#user-transfers" type="button" role="tab" aria-controls="user-transfers" aria-selected="false">
+                            <i class="fas fa-handshake me-2"></i>Traspasos entre usuarios
                         </button>
                     </li>
                 </ul>
@@ -235,6 +243,309 @@
                             </table>
                         </div>
                     </div>
+
+                    <div class="tab-pane fade" id="user-transfers" role="tabpanel" aria-labelledby="user-transfers-tab">
+                        <div class="p-3">
+                            @php
+                                $userTransfers = $league->getUserTransfers();
+                            @endphp
+                            
+                            @if($userTransfers->count() > 0)
+                                <div class="row">
+                                    <div class="col-12 mb-4">
+                                        <div class="alert alert-info">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <strong>Total de traspasos entre usuarios:</strong> {{ $league->getTotalUserTransfers() }}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row">
+                                    @foreach($userTransfers as $transferData)
+                                        <div class="col-md-6 col-lg-4 mb-4">
+                                            <div class="card h-100">
+                                                <div class="card-header bg-primary text-white">
+                                                    <h6 class="mb-0">
+                                                        <i class="fas fa-handshake me-2"></i>{{ $transferData['users_pair'] }}
+                                                    </h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="text-center mb-3">
+                                                        <h4 class="text-primary mb-0">{{ $transferData['total_transfers'] }}</h4>
+                                                        <small class="text-muted">{{ $transferData['total_transfers'] == 1 ? 'traspaso' : 'traspasos' }}</small>
+                                                    </div>
+                                                    
+                                                    @if($transferData['transfers']->count() <= 5)
+                                                        <div class="transfers-list">
+                                                            @foreach($transferData['transfers'] as $transfer)
+                                                                <div class="transfer-item mb-2 p-2 bg-light rounded">
+                                                                    <div class="d-flex justify-content-between align-items-start">
+                                                                        <div class="flex-grow-1">
+                                                                            <strong>{{ $transfer->player_name ?? 'Jugador' }}</strong><br>
+                                                                            <small class="text-muted">
+                                                                                {{ $transfer->userFrom->name }} → {{ $transfer->userTo->name }}
+                                                                            </small>
+                                                                        </div>
+                                                                        <div class="text-end">
+                                                                            <span class="badge bg-success">{{ number_format($transfer->amount, 0, ',', '.') }}€</span><br>
+                                                                            <small class="text-muted">{{ $transfer->date->format('d/m/Y') }}</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                        </div>
+                                                    @else
+                                                        <div class="text-center">
+                                                            <p class="text-muted mb-2">Últimos 3 traspasos:</p>
+                                                            @foreach($transferData['transfers']->take(3) as $transfer)
+                                                                <div class="transfer-item mb-2 p-2 bg-light rounded">
+                                                                    <div class="d-flex justify-content-between align-items-start">
+                                                                        <div class="flex-grow-1">
+                                                                            <strong>{{ $transfer->player_name ?? 'Jugador' }}</strong><br>
+                                                                            <small class="text-muted">
+                                                                                {{ $transfer->userFrom->name }} → {{ $transfer->userTo->name }}
+                                                                            </small>
+                                                                        </div>
+                                                                        <div class="text-end">
+                                                                            <span class="badge bg-success">{{ number_format($transfer->amount, 0, ',', '.') }}€</span><br>
+                                                                            <small class="text-muted">{{ $transfer->date->format('d/m/Y') }}</small>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            @endforeach
+                                                            @if($transferData['transfers']->count() > 3)
+                                                                <small class="text-muted">y {{ $transferData['transfers']->count() - 3 }} más...</small>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @else
+                                <div class="text-center py-5">
+                                    <i class="fas fa-handshake fa-3x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No hay traspasos entre usuarios</h5>
+                                    <p class="text-muted">Los traspasos entre usuarios aparecerán aquí cuando se realicen transacciones</p>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile version without card wrapper -->
+        <div class="d-lg-none">
+            <!-- Mobile tabs navigation -->
+            <div class="mobile-tabs-nav mb-4">
+                <ul class="nav nav-pills d-flex" id="mobileLeagueTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="mobile-classification-tab" data-bs-toggle="tab" data-bs-target="#mobile-classification" type="button" role="tab" aria-controls="mobile-classification" aria-selected="true">
+                            <i class="fas fa-list-ol me-1"></i>
+                            <span class="d-none d-sm-inline">Clasificación</span>
+                            <span class="d-sm-none">Ranking</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="mobile-transactions-tab" data-bs-toggle="tab" data-bs-target="#mobile-transactions" type="button" role="tab" aria-controls="mobile-transactions" aria-selected="false">
+                            <i class="fas fa-exchange-alt me-1"></i>
+                            <span class="d-none d-sm-inline">Transacciones</span>
+                            <span class="d-sm-none">Trans.</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="mobile-transfers-tab" data-bs-toggle="tab" data-bs-target="#mobile-transfers" type="button" role="tab" aria-controls="mobile-transfers" aria-selected="false">
+                            <i class="fas fa-handshake me-1"></i>
+                            <span class="d-none d-sm-inline">Traspasos</span>
+                            <span class="d-sm-none">Trasp.</span>
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Mobile tab content -->
+            <div class="tab-content" id="mobileLeagueTabsContent">
+                <div class="tab-pane fade show active" id="mobile-classification" role="tabpanel" aria-labelledby="mobile-classification-tab">
+                    @if($league->biwengerUsers->count() > 0)
+                        <div id="classificationMobile">
+                            @foreach($league->biwengerUsers as $user)
+                                @php
+                                    $currentBalance = $user->balances->sortByDesc('created_at')->first();
+                                    $hasNegativeCash = $currentBalance && $currentBalance->cash < 0;
+                                @endphp
+                                <div class="card mb-3 ranking-card {{ $hasNegativeCash ? 'ranking-card-negative' : '' }}">
+                                    <div class="card-body p-3">
+                                        <div class="d-flex align-items-center mb-3">
+                                            <div class="ranking-position me-3">
+                                                @if($user->position <= 3)
+                                                    <i class="fas fa-medal medal-{{ $user->position }} fa-2x"></i>
+                                                @else
+                                                    <div class="position-badge">{{ $user->position }}</div>
+                                                @endif
+                                            </div>
+                                            <div class="player-info flex-grow-1">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="player-avatar-mobile me-2">
+                                                        @if($user->icon)
+                                                            <img src="{{ $user->icon }}" alt="{{ $user->name }}" class="rounded-circle" width="35" height="35" style="object-fit: cover;">
+                                                        @else
+                                                            {{ strtoupper(substr($user->name, 0, 2)) }}
+                                                        @endif
+                                                    </div>
+                                                    <div>
+                                                        <h6 class="mb-0 player-name">{{ $user->name }}</h6>
+                                                        <small class="text-muted">ID: {{ $user->biwenger_id }}</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="points-display text-end">
+                                                <div class="points-value">{{ number_format($user->points, 0, ',', '.') }}</div>
+                                                <small class="text-muted">puntos</small>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="stats-grid">
+                                            <div class="stat-item">
+                                                <div class="stat-label">Valor Equipo</div>
+                                                <div class="stat-value">
+                                                    @if($currentBalance)
+                                                        {{ number_format($currentBalance->team_value, 0, ',', '.') }}€
+                                                    @else
+                                                        -
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-label">Dinero</div>
+                                                <div class="stat-value {{ $hasNegativeCash ? 'text-danger' : '' }}">
+                                                    @if($currentBalance)
+                                                        {{ number_format($currentBalance->cash, 0, ',', '.') }}€
+                                                    @else
+                                                        -
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-label">Puja Máxima</div>
+                                                <div class="stat-value">
+                                                    @if($currentBalance)
+                                                        {{ number_format($currentBalance->maximum_bid, 0, ',', '.') }}€
+                                                    @else
+                                                        -
+                                                    @endif
+                                                </div>
+                                            </div>
+                                            <div class="stat-item">
+                                                <div class="stat-label">Balance Total</div>
+                                                <div class="stat-value fw-bold">
+                                                    @if($currentBalance)
+                                                        {{ number_format($currentBalance->balance, 0, ',', '.') }}€
+                                                    @else
+                                                        -
+                                                    @endif
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @else
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay participantes en esta liga</h5>
+                            <p class="text-muted">Los participantes aparecerán aquí cuando se sincronicen los datos</p>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="tab-pane fade" id="mobile-transactions" role="tabpanel" aria-labelledby="mobile-transactions-tab">
+                    <div id="transactionsMobile">
+                        <!-- Cards will be loaded via AJAX -->
+                    </div>
+                </div>
+
+                <div class="tab-pane fade" id="mobile-transfers" role="tabpanel" aria-labelledby="mobile-transfers-tab">
+                    @php
+                        $userTransfers = $league->getUserTransfers();
+                    @endphp
+                    
+                    @if($userTransfers->count() > 0)
+                        <div class="mb-4">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <strong>Total de traspasos entre usuarios:</strong> {{ $league->getTotalUserTransfers() }}
+                            </div>
+                        </div>
+                        
+                        @foreach($userTransfers as $transferData)
+                            <div class="card mb-4">
+                                <div class="card-header bg-primary text-white">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-handshake me-2"></i>{{ $transferData['users_pair'] }}
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <h4 class="text-primary mb-0">{{ $transferData['total_transfers'] }}</h4>
+                                        <small class="text-muted">{{ $transferData['total_transfers'] == 1 ? 'traspaso' : 'traspasos' }}</small>
+                                    </div>
+                                    
+                                    @if($transferData['transfers']->count() <= 5)
+                                        <div class="transfers-list">
+                                            @foreach($transferData['transfers'] as $transfer)
+                                                <div class="transfer-item mb-2 p-2 bg-light rounded">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div class="flex-grow-1">
+                                                            <strong>{{ $transfer->player_name ?? 'Jugador' }}</strong><br>
+                                                            <small class="text-muted">
+                                                                {{ $transfer->userFrom->name }} → {{ $transfer->userTo->name }}
+                                                            </small>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <span class="badge bg-success">{{ number_format($transfer->amount, 0, ',', '.') }}€</span><br>
+                                                            <small class="text-muted">{{ $transfer->date->format('d/m/Y') }}</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="text-center">
+                                            <p class="text-muted mb-2">Últimos 3 traspasos:</p>
+                                            @foreach($transferData['transfers']->take(3) as $transfer)
+                                                <div class="transfer-item mb-2 p-2 bg-light rounded">
+                                                    <div class="d-flex justify-content-between align-items-start">
+                                                        <div class="flex-grow-1">
+                                                            <strong>{{ $transfer->player_name ?? 'Jugador' }}</strong><br>
+                                                            <small class="text-muted">
+                                                                {{ $transfer->userFrom->name }} → {{ $transfer->userTo->name }}
+                                                            </small>
+                                                        </div>
+                                                        <div class="text-end">
+                                                            <span class="badge bg-success">{{ number_format($transfer->amount, 0, ',', '.') }}€</span><br>
+                                                            <small class="text-muted">{{ $transfer->date->format('d/m/Y') }}</small>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                            @if($transferData['transfers']->count() > 3)
+                                                <small class="text-muted">y {{ $transferData['transfers']->count() - 3 }} más...</small>
+                                            @endif
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    @else
+                        <div class="text-center py-5">
+                            <i class="fas fa-handshake fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay traspasos entre usuarios</h5>
+                            <p class="text-muted">Los traspasos entre usuarios aparecerán aquí cuando se realicen transacciones</p>
+                        </div>
+                    @endif
                 </div>
             </div>
         </div>
