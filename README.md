@@ -9,7 +9,7 @@
 
 Una aplicación web completa para el análisis y gestión de ligas de Biwenger con integración API completa.
 
-[🚀 Características](#características) • [📥 Instalación](#instalación) • [⚙️ Configuración](#configuración) • [📖 API](#api-endpoints) • [🤝 Contribuir](#contribuir)
+[✨ Características](#-características) • [📥 Instalación](#-instalación) • [⚙️ Configuración](#️-configuración) • [🌐 API](#-api-endpoints) • [🤝 Contribuir](#-contribuir)
 
 </div>
 
@@ -128,7 +128,7 @@ Configura las siguientes variables en tu archivo `.env`:
 
 ```env
 # Configuración de la aplicación
-APP_NAME="Biwenger API Dashboard"
+APP_NAME="BiwAPI"
 APP_ENV=local
 APP_DEBUG=true
 APP_URL=http://localhost
@@ -141,7 +141,7 @@ DB_DATABASE=biw_api
 DB_USERNAME=root
 DB_PASSWORD=
 
-# Configuración de Biwenger API
+# Configuración de BiwAPI
 BIWENGER_BASE_URL=https://biwenger.as.com/api/v2
 BIWENGER_TIMEOUT=30
 BIWENGER_RETRY_TIMES=3
