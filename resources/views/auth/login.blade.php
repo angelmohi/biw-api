@@ -32,7 +32,7 @@
                                     <i class="fas fa-key text-secondary"></i>
                                 </span>
                                 <input id="password" name="password" class="form-control @error('password') is-invalid @enderror" type="password"
-                                    placeholder="Password">
+                                    placeholder="Contraseña">
                                 @error('password')
                                     <span class="invalid-feedback" role="alert">
                                         <strong>{{ $message }}</strong>
