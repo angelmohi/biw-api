@@ -47,6 +47,10 @@ class LeagueStatsService
                 case 'roundFinished':
                     $this->processRoundFinished($transaction);
                     break;
+
+                case 'clauseIncrement':
+                    $this->processClauseIncrement($transaction, $players, $league);
+                    break;
             }
         }
 
@@ -192,6 +196,43 @@ class LeagueStatsService
     }
 
     /**
+     * Process clause increment transactions
+     */
+    private function processClauseIncrement($transaction, $players, $league): void
+    {
+        foreach ($transaction['content'] as $clauseIncrement) {
+            // Generate unique hash for this clause increment
+            $hash = $this->generateTransactionHash($transaction, TransactionType::CLAUSE_INCREMENT, $clauseIncrement);
+            
+            // Skip if transaction already exists
+            if ($this->transactionExists($hash)) {
+                continue;
+            }
+
+            $from = $clauseIncrement['user']['id'];
+            $amount = $clauseIncrement['amount'];
+
+            $fromUser = BiwengerUser::where('biwenger_id', $from)
+                ->where('league_id', $league->id)
+                ->first();
+
+            if (!$fromUser) {
+                continue; // Skip if user not found
+            }
+
+            $newTransaction = new Transaction();
+            $newTransaction->transaction_hash = $hash;
+            $newTransaction->type_id = TransactionType::CLAUSE_INCREMENT;
+            $newTransaction->amount = $amount;
+            $newTransaction->player_id = $clauseIncrement['player'];
+            $newTransaction->player_name = $players[$clauseIncrement['player']] ?? 'N/A';
+            $newTransaction->from_user_id = $fromUser->id;
+            $newTransaction->date = date('Y-m-d H:i:s', $transaction['date']);
+            $newTransaction->save();
+        }
+    }
+
+    /**
      * Generate a unique hash for a transaction to avoid duplicates
      */
     private function generateTransactionHash($transaction, $type, $contentItem = null): string
@@ -219,6 +260,12 @@ class LeagueStatsService
                 $data['round_id'] = $transaction['content']['round']['id'];
                 $data['amount'] = $contentItem['bonus'] ?? 0;
                 $data['user'] = $contentItem['user']['id'];
+                break;
+
+            case TransactionType::CLAUSE_INCREMENT:
+                $data['player_id'] = $contentItem['player'];
+                $data['amount'] = $contentItem['amount'];
+                $data['from'] = $contentItem['user']['id'];
                 break;
         }
 

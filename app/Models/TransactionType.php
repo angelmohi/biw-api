@@ -24,4 +24,11 @@ class TransactionType extends Model
      * @var int
      */
     const ROUND_FINISHED = 3;
+
+    /**
+     * Subida de cláusula (DB value)
+     *
+     * @var int
+     */
+    const CLAUSE_INCREMENT = 4;
 }

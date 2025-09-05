@@ -57,6 +57,10 @@ class BiwengerUserBalance extends Model
             ->where('type_id', TransactionType::TRANSFER)
             ->get();
 
+        $clauseIncrementTransactions = Transaction::where('from_user_id', $user->id)
+            ->where('type_id', TransactionType::CLAUSE_INCREMENT)
+            ->get();
+
         $amountObtained = 0;
         $amountSpent = 0;
 
@@ -70,6 +74,9 @@ class BiwengerUserBalance extends Model
             $amountObtained += $transaction->amount;
         }
         foreach ($transferNegativeTransactions as $transaction) {
+            $amountSpent += $transaction->amount;
+        }
+        foreach ($clauseIncrementTransactions as $transaction) {
             $amountSpent += $transaction->amount;
         }
 

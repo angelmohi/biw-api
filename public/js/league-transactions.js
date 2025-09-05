@@ -31,6 +31,8 @@ $(document).ready(function() {
                     }
                     loadMobileTransactions();
                 } else {
+                    // Clean up any mobile search elements when switching to desktop
+                    $('.mobile-search-container').remove();
                     $('#transactionsMobile').empty();
                     if (!transactionsTable) {
                         initializeTransactionsTable();
@@ -119,7 +121,7 @@ $(document).ready(function() {
                     data: 0, 
                     name: 'type_id',
                     orderable: true,
-                    searchable: false,
+                    searchable: true, // Enable search for transaction type
                     className: 'align-middle',
                     width: '10%'
                 },
@@ -167,7 +169,7 @@ $(document).ready(function() {
                     data: 6, 
                     name: 'date',
                     orderable: true,
-                    searchable: false,
+                    searchable: true, // Enable search for dates
                     className: 'align-middle text-center',
                     width: '11%'
                 }

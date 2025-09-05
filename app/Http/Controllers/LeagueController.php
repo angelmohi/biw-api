@@ -8,6 +8,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 class LeagueController extends Controller
 {
@@ -90,86 +91,176 @@ class LeagueController extends Controller
             return $this->getMobileTransactions($request, $league);
         }
 
-        $dataTablesRequest = new \App\Helpers\DataTablesRequest($request);
+        // Get DataTables parameters directly from request
+        $draw = intval($request->get('draw', 1));
+        $start = intval($request->get('start', 0));
+        $length = intval($request->get('length', 10));
+        $searchValue = '';
         
-        // Base query for transactions
-        $baseQuery = $league->transactions();
-        
-        // Total records count
-        $totalRecords = $baseQuery->count();
-        
-        // Apply search filter if provided
-        $query = $league->transactions();
-        if ($dataTablesRequest->search()) {
-            $searchTerm = $dataTablesRequest->search();
-            $query->where(function($q) use ($searchTerm) {
-                $q->where('description', 'like', "%{$searchTerm}%")
-                  ->orWhere('player_name', 'like', "%{$searchTerm}%")
-                  ->orWhere('amount', 'like', "%{$searchTerm}%")
-                  ->orWhereHas('userFrom', function($subQ) use ($searchTerm) {
-                      $subQ->where('name', 'like', "%{$searchTerm}%");
-                  })
-                  ->orWhereHas('userTo', function($subQ) use ($searchTerm) {
-                      $subQ->where('name', 'like', "%{$searchTerm}%");
-                  });
-            });
+        // Extract search value from DataTables format
+        if ($request->has('search') && is_array($request->get('search'))) {
+            $searchArray = $request->get('search');
+            $searchValue = isset($searchArray['value']) ? trim($searchArray['value']) : '';
         }
         
-        // Count filtered records
-        $filteredRecords = $query->count();
-        
-        // Apply sorting
-        $orderColumns = [
-            0 => 'type_id',
-            1 => 'description', 
-            2 => 'amount',
-            3 => 'player_name',
-            4 => 'from_user_id',
-            5 => 'to_user_id',
-            6 => 'date'
-        ];
-        
-        $hasJoins = false;
-        foreach ($dataTablesRequest->order() as $columnIndex => $direction) {
-            if (isset($orderColumns[$columnIndex])) {
-                $column = $orderColumns[$columnIndex];
-                
-                // Handle special cases for user relationships
-                if ($column === 'from_user_id' && !$hasJoins) {
-                    $query->leftJoin('biwenger_user as from_user', 'transaction.from_user_id', '=', 'from_user.id')
-                          ->select('transaction.*')
-                          ->orderBy('from_user.name', $direction);
-                    $hasJoins = true;
-                } elseif ($column === 'to_user_id' && !$hasJoins) {
-                    $query->leftJoin('biwenger_user as to_user', 'transaction.to_user_id', '=', 'to_user.id')
-                          ->select('transaction.*')
-                          ->orderBy('to_user.name', $direction);
-                    $hasJoins = true;
-                } else {
-                    $query->orderBy('transaction.' . $column, $direction);
-                }
+        // Extract order parameters
+        $orderColumn = 6; // Default to date column
+        $orderDirection = 'desc'; // Default to descending
+        if ($request->has('order') && is_array($request->get('order'))) {
+            $orderArray = $request->get('order');
+            if (isset($orderArray[0]) && is_array($orderArray[0])) {
+                $orderColumn = intval($orderArray[0]['column'] ?? 6);
+                $orderDirection = ($orderArray[0]['dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
             }
         }
         
-        // Default sort if no order specified
-        if (empty($dataTablesRequest->order())) {
-            $query->orderBy('transaction.date', 'desc');
+        Log::info("DataTables Raw Parameters", [
+            'draw' => $draw,
+            'start' => $start, 
+            'length' => $length,
+            'search_value' => $searchValue,
+            'order_column' => $orderColumn,
+            'order_direction' => $orderDirection
+        ]);
+        
+        // Get all transactions for this league
+        $allTransactions = $league->transactions()
+            ->with(['userFrom', 'userTo', 'type'])
+            ->orderBy('date', 'desc')
+            ->get();
+            
+        $totalRecords = $allTransactions->count();
+        
+        // Filter transactions based on search
+        $filteredTransactions = $allTransactions;
+        
+        if (!empty($searchValue)) {
+            $filteredTransactions = $allTransactions->filter(function($transaction) use ($searchValue) {
+                // Check description
+                if ($transaction->description && stripos($transaction->description, $searchValue) !== false) {
+                    return true;
+                }
+                
+                // Check player name
+                if ($transaction->player_name && stripos($transaction->player_name, $searchValue) !== false) {
+                    return true;
+                }
+                
+                // Check amount (both raw and formatted)
+                if ($transaction->amount) {
+                    $formattedAmount = number_format($transaction->amount, 0, ',', '.');
+                    if (stripos((string)$transaction->amount, $searchValue) !== false || 
+                        stripos($formattedAmount, $searchValue) !== false) {
+                        return true;
+                    }
+                }
+                
+                // Check transaction type
+                $typeText = '';
+                if ($transaction->type && $transaction->type->name) {
+                    $typeText = $transaction->type->name;
+                } else {
+                    $typeText = match($transaction->type_id) {
+                        1 => 'Traspaso',
+                        2 => 'Mercado', 
+                        3 => 'Jornada',
+                        4 => 'Cláusula',
+                        default => 'Desconocido'
+                    };
+                }
+                if (stripos($typeText, $searchValue) !== false) {
+                    return true;
+                }
+                
+                // Check user from
+                if ($transaction->userFrom && stripos($transaction->userFrom->name, $searchValue) !== false) {
+                    return true;
+                }
+                
+                // Check user to
+                if ($transaction->userTo && stripos($transaction->userTo->name, $searchValue) !== false) {
+                    return true;
+                }
+                
+                // Check date formats
+                if ($transaction->date) {
+                    $dateShort = $transaction->date->format('d/m/Y');
+                    $dateLong = $transaction->date->format('d/m/Y H:i');
+                    if (stripos($dateShort, $searchValue) !== false || stripos($dateLong, $searchValue) !== false) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            });
         }
         
+        $filteredRecords = $filteredTransactions->count();
+        
+        // Apply sorting
+        $sortedTransactions = $filteredTransactions->sort(function($a, $b) use ($orderColumn, $orderDirection) {
+            $valueA = null;
+            $valueB = null;
+            
+            switch ($orderColumn) {
+                case 0: // Type
+                    $valueA = $a->type_id ?? 0;
+                    $valueB = $b->type_id ?? 0;
+                    break;
+                case 1: // Description
+                    $valueA = $a->description ?? '';
+                    $valueB = $b->description ?? '';
+                    break;
+                case 2: // Amount
+                    $valueA = $a->amount ?? 0;
+                    $valueB = $b->amount ?? 0;
+                    break;
+                case 3: // Player name
+                    $valueA = $a->player_name ?? '';
+                    $valueB = $b->player_name ?? '';
+                    break;
+                case 4: // User from
+                    $valueA = $a->userFrom ? $a->userFrom->name : 'zzz';
+                    $valueB = $b->userFrom ? $b->userFrom->name : 'zzz';
+                    break;
+                case 5: // User to
+                    $valueA = $a->userTo ? $a->userTo->name : 'zzz';
+                    $valueB = $b->userTo ? $b->userTo->name : 'zzz';
+                    break;
+                case 6: // Date
+                default:
+                    $valueA = $a->date ? $a->date->timestamp : 0;
+                    $valueB = $b->date ? $b->date->timestamp : 0;
+                    break;
+            }
+            
+            // Compare values
+            if (is_numeric($valueA) && is_numeric($valueB)) {
+                $result = $valueA <=> $valueB;
+            } else {
+                $result = strcasecmp((string)$valueA, (string)$valueB);
+            }
+            
+            // Apply direction
+            return $orderDirection === 'desc' ? -$result : $result;
+        });
+        
+        // Reset collection keys after sorting
+        $sortedTransactions = $sortedTransactions->values();
+        
         // Apply pagination
-        $transactions = $query->offset($dataTablesRequest->start())
-                             ->limit($dataTablesRequest->length())
-                             ->get();
+        $paginatedTransactions = $sortedTransactions->slice($start, $length);
         
         // Format data for DataTables
         $data = [];
-        foreach ($transactions as $transaction) {
-            // Type badge
+        foreach ($paginatedTransactions as $transaction) {
+            // Type badge - Simplificado para usar siempre type_id
             $typeBadge = match($transaction->type_id) {
                 1 => '<span class="badge bg-primary"><i class="fas fa-exchange-alt me-1"></i>Traspaso</span>',
                 2 => '<span class="badge bg-success"><i class="fas fa-shopping-cart me-1"></i>Mercado</span>',
                 3 => '<span class="badge bg-info"><i class="fas fa-clock me-1"></i>Jornada</span>',
-                default => '<span class="badge bg-secondary">Desconocido</span>'
+                4 => '<span class="badge bg-warning text-dark"><i class="fas fa-arrow-up me-1"></i>Cláusula</span>',
+                default => '<span class="badge bg-secondary">Tipo ' . $transaction->type_id . '</span>'
             };
             
             // Amount formatting
@@ -198,12 +289,12 @@ class LeagueController extends Controller
             ];
         }
         
-        return response()->json(\App\Helpers\DataTablesResponse::output(
-            $dataTablesRequest,
-            $data,
-            $totalRecords,
-            $filteredRecords
-        ));
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $filteredRecords,
+            'data' => $data
+        ]);
     }
 
     /**
@@ -266,10 +357,12 @@ class LeagueController extends Controller
     {
         $length = $request->get('length', 20); // Default 20 for mobile
         
-        $query = $league->transactions()->orderBy('date', 'desc');
+        // Get transactions without search functionality
+        $query = $league->transactions();
+        $totalRecords = $query->count();
         
-        // Apply limit
-        $transactions = $query->limit($length)->get();
+        // Apply ordering and limit
+        $transactions = $query->orderBy('date', 'desc')->limit($length)->get();
         
         // Format data for mobile cards
         $data = [];
@@ -279,6 +372,7 @@ class LeagueController extends Controller
                 1 => '<span class="badge bg-primary">Traspaso</span>',
                 2 => '<span class="badge bg-success">Mercado</span>',
                 3 => '<span class="badge bg-info">Jornada</span>',
+                4 => '<span class="badge bg-warning text-dark">Cláusula</span>',
                 default => '<span class="badge bg-secondary">Desconocido</span>'
             };
             
@@ -310,8 +404,8 @@ class LeagueController extends Controller
         
         return response()->json([
             'data' => $data,
-            'recordsTotal' => $league->transactions()->count(),
-            'recordsFiltered' => $league->transactions()->count()
+            'recordsTotal' => $totalRecords,
+            'recordsFiltered' => $totalRecords // Same as total since no filtering
         ]);
     }
 }
