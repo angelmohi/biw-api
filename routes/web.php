@@ -25,6 +25,7 @@ Route::prefix('leagues')->controller(LeagueController::class)->group(function() 
     Route::get('/', 'index')->name('leagues.index');
     Route::get('/{league}', 'show')->name('leagues.show');
     Route::get('/{league}/transactions', 'getTransactions')->name('leagues.transactions');
+    Route::get('/{league}/balance-chart', 'getBalanceChart')->name('leagues.balance-chart');
     
     // Admin-only routes
     Route::middleware('admin')->group(function() {

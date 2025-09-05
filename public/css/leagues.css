@@ -51,6 +51,238 @@
     border: none !important;
 }
 
+/* Chart container styles - Ultra simplified */
+.chart-container {
+    width: 100%;
+    height: 600px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: #ffffff;
+    position: relative;
+}
+
+.chart-container-mobile {
+    width: 100%;
+    height: 500px;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    background: #ffffff;
+    position: relative;
+}
+
+/* Canvas styles - Force proper sizing */
+.chart-container canvas {
+    width: 100% !important;
+    height: 600px !important;
+    display: block;
+}
+
+.chart-container-mobile canvas {
+    width: 100% !important;
+    height: 500px !important;
+    display: block;
+}
+
+#balanceChart {
+    max-width: 100%;
+    max-height: 600px;
+}
+
+#balanceChartMobile {
+    max-width: 100%;
+    max-height: 500px;
+}
+
+/* Custom chart legend with profile pictures - Outside container */
+.custom-chart-legend {
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    margin-bottom: 1rem;
+}
+
+/* Chart profile pictures styling */
+.chart-container canvas,
+.chart-container-mobile canvas {
+    position: relative;
+    z-index: 1;
+}
+
+/* Ensure profile pictures are visible above chart elements */
+.chart-container::after,
+.chart-container-mobile::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.legend-item {
+    background-color: #fff;
+    border: 1px solid #e9ecef !important;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    padding: 0.5rem !important; /* Smaller padding */
+    user-select: none; /* Prevent text selection */
+}
+
+.legend-item:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd !important;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.legend-item:active {
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+
+.legend-item-hidden {
+    opacity: 0.5;
+    text-decoration: line-through;
+}
+
+.legend-item-hidden:hover {
+    opacity: 0.7;
+}
+
+.legend-color-box {
+    border-radius: 2px;
+    flex-shrink: 0;
+    width: 10px !important; /* Smaller color box */
+    height: 10px !important;
+}
+
+.legend-text {
+    color: #495057;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 0.85rem; /* Smaller text */
+    line-height: 1.2;
+}
+
+/* Profile picture styling in chart legend */
+.custom-chart-legend img {
+    flex-shrink: 0;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    transition: transform 0.2s ease;
+    width: 20px !important; /* Smaller profile pictures */
+    height: 20px !important;
+}
+
+.custom-chart-legend .legend-item:hover img {
+    transform: scale(1.1);
+}
+
+/* Chart loading state */
+#chartLoading, #chartLoadingMobile {
+    background-color: #f8f9fa;
+}
+
+#chartLoading .spinner-border, #chartLoadingMobile .spinner-border {
+    width: 2rem;
+    height: 2rem;
+}
+
+/* Chart controls */
+.chart-controls .btn {
+    border-radius: 20px;
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+}
+
+.chart-controls .btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Responsive chart controls */
+@media (max-width: 576px) {
+    .chart-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    
+    .chart-controls .btn {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+    }
+    
+    .chart-controls .btn i {
+        margin-right: 0.25rem !important;
+    }
+    
+    /* Hide text on very small screens, keep only icons */
+    @media (max-width: 400px) {
+        .chart-controls .btn {
+            padding: 0.375rem;
+            min-width: 32px;
+        }
+        
+        .chart-controls .btn span:not(.fas):not(.fa) {
+            display: none;
+        }
+        
+        .chart-controls .btn i {
+            margin-right: 0 !important;
+        }
+    }
+}
+
+/* Responsive chart canvas */
+#balanceChart, #balanceChartMobile {
+    max-width: 100%;
+    height: auto !important;
+}
+
+/* Chart error state */
+#chartError, #chartErrorMobile {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+}
+
+#chartError .fa-exclamation-triangle, #chartErrorMobile .fa-exclamation-triangle {
+    opacity: 0.7;
+}
+
+/* Balance chart tab content specific styles */
+#balance-chart .chart-container {
+    margin-top: 1rem;
+}
+
+#mobile-balance-chart .chart-container-mobile {
+    margin-top: 1rem;
+}
+
+/* Mobile specific adjustments for chart tabs */
+@media (max-width: 991.98px) {
+    .mobile-tabs-nav .nav-pills .nav-item {
+        flex: 1;
+    }
+    
+    .mobile-tabs-nav .nav-pills .nav-link {
+        padding: 0.5rem 0.25rem;
+        font-size: 0.875rem;
+        text-align: center;
+    }
+    
+    .chart-container-mobile {
+        margin: 0.5rem 0;
+    }
+}
+
 .stat-card {
     border: none;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
@@ -909,4 +1141,42 @@ table tr.negative-cash:hover {
 .transaction-date {
     font-size: 0.8rem;
     opacity: 0.8;
+}
+
+/* Responsive legend grid for more items per row */
+@media (min-width: 1200px) {
+    .custom-chart-legend .col-md-6.col-lg-4 {
+        flex: 0 0 16.666667% !important; /* 6 columns on xl screens */
+        max-width: 16.666667% !important;
+    }
+}
+
+@media (min-width: 992px) and (max-width: 1199px) {
+    .custom-chart-legend .col-md-6.col-lg-4 {
+        flex: 0 0 20% !important; /* 5 columns on lg screens */
+        max-width: 20% !important;
+    }
+}
+
+@media (min-width: 768px) and (max-width: 991px) {
+    .custom-chart-legend .col-md-6.col-lg-4 {
+        flex: 0 0 25% !important; /* 4 columns on md screens */
+        max-width: 25% !important;
+    }
+}
+
+@media (max-width: 767px) {
+    .custom-chart-legend .col-md-6.col-lg-4 {
+        flex: 0 0 50% !important; /* 2 columns on small screens */
+        max-width: 50% !important;
+    }
+    
+    .legend-text {
+        font-size: 0.8rem; /* Even smaller text on mobile */
+    }
+    
+    .custom-chart-legend img {
+        width: 18px !important; /* Even smaller profile pictures on mobile */
+        height: 18px !important;
+    }
 }

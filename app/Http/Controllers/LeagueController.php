@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Contracts\BiwengerApiInterface;
 use App\Models\League;
+use App\Models\BiwengerUserBalance;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
@@ -347,6 +348,148 @@ class LeagueController extends Controller
         } catch (\Exception $e) {
             flashDangerMessage('Error al actualizar la liga: ' . $e->getMessage());
             return jsonIframeRedirection(route('leagues.show', $league->id));
+        }
+    }
+
+    /**
+     * Get balance history data for chart
+     */
+    public function getBalanceChart(Request $request, League $league)
+    {
+        try {
+            $user = Auth::user();
+            
+            // Check if user has access to this league
+            if (!$league->hasUser($user->id)) {
+                Log::error('User does not have access to league', ['user_id' => $user->id, 'league_id' => $league->id]);
+                return response()->json(['error' => 'No tienes acceso a esta liga.'], 403);
+            }
+
+            Log::info('Getting balance chart for league', ['league_id' => $league->id, 'league_name' => $league->name]);
+
+            // Get all users in the league
+            $users = $league->biwengerUsers()->orderBy('name')->get();
+            Log::info('Found users in league', ['user_count' => $users->count()]);
+            
+            if ($users->isEmpty()) {
+                Log::warning('No users found in league', ['league_id' => $league->id]);
+                return response()->json([
+                    'labels' => [],
+                    'datasets' => []
+                ]);
+            }
+            
+            // Get all unique dates from balance records for this league
+            $allDates = BiwengerUserBalance::whereIn('user_id', $users->pluck('id'))
+                ->selectRaw('DATE(created_at) as date')
+                ->distinct()
+                ->orderBy('date')
+                ->pluck('date')
+                ->toArray();
+            
+            Log::info('Found balance dates', ['date_count' => count($allDates), 'first_date' => $allDates[0] ?? null, 'last_date' => end($allDates) ?: null]);
+            
+            if (empty($allDates)) {
+                Log::warning('No balance data found for league users', ['league_id' => $league->id, 'user_ids' => $users->pluck('id')->toArray()]);
+                return response()->json([
+                    'labels' => [],
+                    'datasets' => []
+                ]);
+            }
+            
+            // Filter dates to show only every 3 days, but always include first and last
+            $filteredDates = [];
+            $totalDates = count($allDates);
+            
+            for ($i = 0; $i < $totalDates; $i++) {
+                // Include first date, every 3rd date, and last date
+                if ($i === 0 || $i % 3 === 0 || $i === $totalDates - 1) {
+                    $filteredDates[] = $allDates[$i];
+                }
+            }
+            
+            Log::info('Filtered dates for chart', ['original_count' => $totalDates, 'filtered_count' => count($filteredDates)]);
+            
+            // Get balance history for all users
+            $chartData = [
+                'labels' => [],
+                'datasets' => []
+            ];
+            
+            // Format dates for display
+            $chartData['labels'] = array_map(function($date) {
+                return \Carbon\Carbon::parse($date)->format('d/m/Y');
+            }, $filteredDates);
+            
+            $colors = [
+                'rgb(228, 26, 28)',
+                'rgb(55, 126, 184)',
+                'rgb(77, 175, 74)',
+                'rgb(152, 78, 163)',
+                'rgb(255, 127, 0)',
+                'rgb(166, 86, 40)',
+                'rgb(247, 129, 191)',
+                'rgb(153, 153, 153)',
+                'rgb(51, 160, 44)',
+                'rgb(31, 120, 180)',
+                'rgb(227, 26, 28)',
+                'rgb(106, 61, 154)',
+                'rgb(255, 191, 0)',
+                'rgb(202, 178, 214)',
+                'rgb(253, 180, 98)',
+                'rgb(178, 223, 138)',
+                'rgb(166, 206, 227)',
+                'rgb(251, 128, 114)',
+                'rgb(128, 177, 211)',
+                'rgb(255, 255, 51)'
+            ];
+            
+            $colorIndex = 0;
+            
+            foreach ($users as $user) {
+                $balanceData = [];
+                
+                foreach ($filteredDates as $date) {
+                    $balance = BiwengerUserBalance::where('user_id', $user->id)
+                        ->whereDate('created_at', $date)
+                        ->first();
+                    
+                    $balanceData[] = $balance ? (float)$balance->balance : null;
+                }
+                
+                $userIcon = $user->icon;
+                Log::info('User icon data', [
+                    'user_name' => $user->name,
+                    'user_id' => $user->id,
+                    'icon' => $userIcon,
+                    'icon_length' => strlen($userIcon ?? ''),
+                    'icon_starts_with_http' => str_starts_with($userIcon ?? '', 'http')
+                ]);
+
+                $chartData['datasets'][] = [
+                    'label' => $user->name,
+                    'data' => $balanceData,
+                    'borderColor' => $colors[$colorIndex % count($colors)],
+                    'backgroundColor' => str_replace('rgb', 'rgba', str_replace(')', ', 0.1)', $colors[$colorIndex % count($colors)])),
+                    'borderWidth' => 2,
+                    'fill' => false,
+                    'tension' => 0.2,
+                    'pointRadius' => 5,
+                    'pointHoverRadius' => 8,
+                    'spanGaps' => true,
+                    'userIcon' => $userIcon,
+                    'userId' => $user->id
+                ];
+                
+                $colorIndex++;
+            }
+            
+            Log::info('Returning chart data', ['labels_count' => count($chartData['labels']), 'datasets_count' => count($chartData['datasets'])]);
+            return response()->json($chartData);
+            
+        } catch (\Exception $e) {
+            Log::error('Error in getBalanceChart', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
+            return response()->json(['error' => 'Error interno del servidor'], 500);
         }
     }
 

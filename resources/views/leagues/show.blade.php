@@ -102,6 +102,11 @@
                             <i class="fas fa-handshake me-2"></i>Traspasos entre usuarios
                         </button>
                     </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="balance-chart-tab" data-bs-toggle="tab" data-bs-target="#balance-chart" type="button" role="tab" aria-controls="balance-chart" aria-selected="false">
+                            <i class="fas fa-chart-line me-2"></i>Evolución Balance
+                        </button>
+                    </li>
                 </ul>
             </div>
             <div class="card-body p-0">
@@ -332,6 +337,42 @@
                             @endif
                         </div>
                     </div>
+
+                    <div class="tab-pane fade" id="balance-chart" role="tabpanel" aria-labelledby="balance-chart-tab">
+                        <div class="p-5">
+                            <div class="row">
+                                <div class="col-12 mb-4">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0">
+                                            <i class="fas fa-chart-line me-2 text-primary"></i>
+                                            Evolución del Balance Total
+                                        </h5>
+                                        <div class="chart-controls">
+                                            <button class="btn btn-sm btn-primary" id="toggleLegend">
+                                                <i class="fas fa-eye-slash me-1"></i>Ocultar Leyenda
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">
+                                        Historial de balance (dinero + valor del equipo) desde el inicio de la liga
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="chart-container p-3">
+                                        <canvas id="balanceChart" style="display: block;"></canvas>
+                                        <div id="chartError" class="text-center py-5" style="display: none;">
+                                            <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                                            <h6 class="text-muted">No hay datos suficientes para mostrar la gráfica</h6>
+                                            <p class="text-muted">La gráfica aparecerá cuando haya datos de balance histórico disponibles</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -360,6 +401,13 @@
                             <i class="fas fa-handshake me-1"></i>
                             <span class="d-none d-sm-inline">Traspasos</span>
                             <span class="d-sm-none">Trasp.</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="mobile-balance-chart-tab" data-bs-toggle="tab" data-bs-target="#mobile-balance-chart" type="button" role="tab" aria-controls="mobile-balance-chart" aria-selected="false">
+                            <i class="fas fa-chart-line me-1"></i>
+                            <span class="d-none d-sm-inline">Gráfica</span>
+                            <span class="d-sm-none">Graf.</span>
                         </button>
                     </li>
                 </ul>
@@ -547,6 +595,34 @@
                         </div>
                     @endif
                 </div>
+
+                <div class="tab-pane fade" id="mobile-balance-chart" role="tabpanel" aria-labelledby="mobile-balance-chart-tab">
+                    <div class="p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h6 class="mb-0">
+                                <i class="fas fa-chart-line me-2 text-primary"></i>
+                                Evolución del Balance
+                            </h6>
+                            <div class="chart-controls">
+                                <button class="btn btn-sm btn-primary" id="toggleLegendMobile">
+                                    <i class="fas fa-eye-slash me-1"></i>Ocultar Leyenda
+                                </button>
+                            </div>
+                        </div>
+                        <small class="text-muted d-block mb-3">
+                            Historial de balance (dinero + valor del equipo) desde el inicio de la liga
+                        </small>
+                        
+                        <div class="chart-container-mobile">
+                            <canvas id="balanceChartMobile" style="display: block;"></canvas>
+                            <div id="chartErrorMobile" class="text-center py-5" style="display: none;">
+                                <i class="fas fa-exclamation-triangle fa-2x text-warning mb-3"></i>
+                                <h6 class="text-muted">No hay datos suficientes</h6>
+                                <p class="text-muted">La gráfica aparecerá cuando haya datos disponibles</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -561,4 +637,5 @@
 @push('scripts')
 <script src="{{ asset('js/league-ranking.js') }}"></script>
 <script src="{{ asset('js/league-transactions.js') }}"></script>
+<script src="{{ asset('js/league-balance-chart.js') }}"></script>
 @endpush
