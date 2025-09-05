@@ -30,7 +30,7 @@ class BiwengerUserBalance extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(BiwengerUser::class);
+        return $this->belongsTo(BiwengerUser::class, 'user_id');
     }
 
     /**

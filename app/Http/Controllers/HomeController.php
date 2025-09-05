@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\League;
 use App\Models\BiwengerUser;
+use App\Models\BiwengerUserBalance;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
@@ -42,7 +43,7 @@ class HomeController extends Controller
             'total_leagues' => $leagues->count(),
             'total_users' => BiwengerUser::whereIn('league_id', $leagues->pluck('id'))->count(),
             'total_transactions' => 0,
-            'recent_transactions' => collect(),
+            'top_balance_users' => collect(),
             'leagues_summary' => $leagues->map(function ($league) {
                 return [
                     'name' => $league->name,
@@ -60,15 +61,27 @@ class HomeController extends Controller
                 $query->whereIn('league_id', $leagues->pluck('id'));
             })->count();
             
-            // Get recent transactions
-            $stats['recent_transactions'] = Transaction::whereHas('userFrom', function($query) use ($leagues) {
-                $query->whereIn('league_id', $leagues->pluck('id'));
-            })->orWhereHas('userTo', function($query) use ($leagues) {
-                $query->whereIn('league_id', $leagues->pluck('id'));
-            })->with(['userFrom', 'userTo', 'type'])
-              ->orderBy('date', 'desc')
-              ->limit(5)
-              ->get();
+            // Get top 5 users with highest balance (most recent balance for each user)
+            $stats['top_balance_users'] = BiwengerUser::whereIn('league_id', $leagues->pluck('id'))
+                ->with('league')
+                ->get()
+                ->map(function($user) {
+                    $latestBalance = BiwengerUserBalance::where('user_id', $user->id)
+                        ->orderBy('created_at', 'desc')
+                        ->first();
+                    
+                    if ($latestBalance) {
+                        $user->today_balance = $latestBalance;
+                        return $user;
+                    }
+                    return null;
+                })
+                ->filter()
+                ->sortByDesc(function($user) {
+                    return $user->today_balance->balance ?? 0;
+                })
+                ->take(5)
+                ->values();
         }
         
         return view('home', compact('stats'));

@@ -74,4 +74,12 @@ class BiwengerUser extends Model
     {
         return BiwengerUserBalance::getBalanceForDate($this, $date);
     }
+
+    /**
+     * Get the league
+     */
+    public function league()
+    {
+        return $this->belongsTo(League::class, 'league_id');
+    }
 }
