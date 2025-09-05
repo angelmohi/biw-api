@@ -43,6 +43,7 @@ class HomeController extends Controller
             'total_leagues' => $leagues->count(),
             'total_users' => BiwengerUser::whereIn('league_id', $leagues->pluck('id'))->count(),
             'total_transactions' => 0,
+            'today_transactions' => 0,
             'top_balance_users' => collect(),
             'leagues_summary' => $leagues->map(function ($league) {
                 return [
@@ -60,6 +61,16 @@ class HomeController extends Controller
             })->orWhereHas('userTo', function($query) use ($leagues) {
                 $query->whereIn('league_id', $leagues->pluck('id'));
             })->count();
+            
+            // Get today's transactions count
+            $stats['today_transactions'] = Transaction::whereDate('date', today())
+                ->where(function($query) use ($leagues) {
+                    $query->whereHas('userFrom', function($subQuery) use ($leagues) {
+                        $subQuery->whereIn('league_id', $leagues->pluck('id'));
+                    })->orWhereHas('userTo', function($subQuery) use ($leagues) {
+                        $subQuery->whereIn('league_id', $leagues->pluck('id'));
+                    });
+                })->count();
             
             // Get top 5 users with highest balance (most recent balance for each user)
             $stats['top_balance_users'] = BiwengerUser::whereIn('league_id', $leagues->pluck('id'))

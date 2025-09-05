@@ -56,10 +56,10 @@
                 <div class="col-6 col-md-6 col-lg-6">
                     <div class="stat-box" style="--stat-color: #f39c12;">
                         <div class="stat-icon">
-                            <i class="fas fa-chart-line"></i>
+                            <i class="fas fa-calendar-day"></i>
                         </div>
-                        <div class="stat-number">{{ $stats['top_balance_users']->count() }}</div>
-                        <div class="stat-label">Top Balance{{ $stats['top_balance_users']->count() != 1 ? 's' : '' }}</div>
+                        <div class="stat-number">{{ $stats['today_transactions'] }}</div>
+                        <div class="stat-label">Transacciones Hoy</div>
                     </div>
                 </div>
             </div>
