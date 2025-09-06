@@ -66,19 +66,16 @@ $(document).ready(function() {
                                             ${transaction[0]}
                                         </div>
                                         <div class="transaction-amount text-end">
-                                            ${transaction[2]}
+                                            ${transaction[1]}
                                         </div>
                                     </div>
-                                    <div class="transaction-description mb-2">
-                                        <strong>${transaction[1]}</strong>
-                                    </div>
-                                    ${transaction[3] ? `<div class="transaction-player mb-2"><i class="fas fa-user me-1"></i>${transaction[3]}</div>` : ''}
+                                    ${transaction[2] ? `<div class="transaction-player mb-2"><i class="fas fa-user me-1"></i>${transaction[2]}</div>` : ''}
                                     <div class="row text-muted small">
-                                        ${transaction[4] ? `<div class="col-6"><strong>De:</strong> ${transaction[4]}</div>` : ''}
-                                        ${transaction[5] ? `<div class="col-6"><strong>Para:</strong> ${transaction[5]}</div>` : ''}
+                                        ${transaction[3] ? `<div class="col-6"><strong>De:</strong> ${transaction[3]}</div>` : ''}
+                                        ${transaction[4] ? `<div class="col-6"><strong>Para:</strong> ${transaction[4]}</div>` : ''}
                                     </div>
                                     <div class="transaction-date text-muted small mt-2">
-                                        <i class="fas fa-clock me-1"></i>${transaction[6]}
+                                        <i class="fas fa-clock me-1"></i>${transaction[5]}
                                     </div>
                                 </div>
                             </div>
@@ -123,18 +120,10 @@ $(document).ready(function() {
                     orderable: true,
                     searchable: true, // Enable search for transaction type
                     className: 'align-middle',
-                    width: '10%'
+                    width: '15%'
                 },
                 { 
                     data: 1, 
-                    name: 'description',
-                    orderable: true,
-                    searchable: true,
-                    className: 'align-middle',
-                    width: '25%'
-                },
-                { 
-                    data: 2, 
                     name: 'amount',
                     orderable: true,
                     searchable: true,
@@ -142,39 +131,39 @@ $(document).ready(function() {
                     width: '12%'
                 },
                 { 
-                    data: 3, 
+                    data: 2, 
                     name: 'player_name',
                     orderable: true,
                     searchable: true,
                     className: 'align-middle',
-                    width: '18%'
+                    width: '25%'
                 },
                 { 
-                    data: 4, 
+                    data: 3, 
                     name: 'from_user_id',
                     orderable: true,
                     searchable: true,
                     className: 'align-middle',
-                    width: '12%'
+                    width: '16%'
                 },
                 { 
-                    data: 5, 
+                    data: 4, 
                     name: 'to_user_id',
                     orderable: true,
                     searchable: true,
                     className: 'align-middle',
-                    width: '12%'
+                    width: '16%'
                 },
                 { 
-                    data: 6, 
+                    data: 5, 
                     name: 'date',
                     orderable: true,
                     searchable: true, // Enable search for dates
                     className: 'align-middle text-center',
-                    width: '11%'
+                    width: '16%'
                 }
             ],
-            order: [[6, 'desc']], // Order by date descending by default
+            order: [[5, 'desc']], // Order by date descending by default
             pageLength: 10,
             lengthMenu: [[10, 25, 50, 100], [10, 25, 50, 100]],
             language: {

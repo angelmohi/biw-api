@@ -234,7 +234,6 @@
                                 <thead class="table-light">
                                     <tr>
                                         <th>Tipo</th>
-                                        <th>Descripción</th>
                                         <th>Cantidad</th>
                                         <th>Jugador</th>
                                         <th>De</th>

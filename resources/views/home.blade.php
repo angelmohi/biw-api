@@ -11,7 +11,7 @@
         <div class="row align-items-center">
             <div class="col-md-8">
                 <h1 class="display-4 fw-bold mb-3">¡Bienvenido, {{ Auth::user()->name }}!</h1>
-                <p class="lead mb-0">Gestiona tus ligas Biwenger y mantente al día con todos los movimientos</p>
+                <p class="lead mb-0">Gestiona tus ligas Biwenger y mantente al día de todos los movimientos</p>
             </div>
             <div class="col-md-4 text-end">
                 <i class="fas fa-futbol" style="font-size: 5rem; opacity: 0.3;"></i>
@@ -49,7 +49,7 @@
                             <i class="fas fa-exchange-alt"></i>
                         </div>
                         <div class="stat-number">{{ number_format($stats['total_transactions']) }}</div>
-                        <div class="stat-label">Transaccione{{ $stats['total_transactions'] != 1 ? 's' : '' }}</div>
+                        <div class="stat-label">Transacciones Totales</div>
                     </div>
                 </div>
                 
@@ -82,7 +82,7 @@
                 <h2 class="section-title">
                     <i class="fas fa-crown text-warning"></i>
                     <span class="d-none d-md-inline">Top 5 VMs</span>
-                    <span class="d-md-none">Top Balance</span>
+                    <span class="d-md-none">Top 5 VMs</span>
                 </h2>
                 
                 @if($stats['top_balance_users']->isEmpty())

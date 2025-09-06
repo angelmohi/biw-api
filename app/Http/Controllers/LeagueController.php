@@ -105,12 +105,12 @@ class LeagueController extends Controller
         }
         
         // Extract order parameters
-        $orderColumn = 6; // Default to date column
+        $orderColumn = 5; // Default to date column (now column 5 instead of 6)
         $orderDirection = 'desc'; // Default to descending
         if ($request->has('order') && is_array($request->get('order'))) {
             $orderArray = $request->get('order');
             if (isset($orderArray[0]) && is_array($orderArray[0])) {
-                $orderColumn = intval($orderArray[0]['column'] ?? 6);
+                $orderColumn = intval($orderArray[0]['column'] ?? 5);
                 $orderDirection = ($orderArray[0]['dir'] ?? 'desc') === 'asc' ? 'asc' : 'desc';
             }
         }
@@ -204,31 +204,32 @@ class LeagueController extends Controller
             $valueB = null;
             
             switch ($orderColumn) {
-                case 0: // Type
+                case 0: // Type (including description)
                     $valueA = $a->type_id ?? 0;
                     $valueB = $b->type_id ?? 0;
+                    // If types are the same, sort by description
+                    if ($valueA === $valueB) {
+                        $valueA = $a->description ?? '';
+                        $valueB = $b->description ?? '';
+                    }
                     break;
-                case 1: // Description
-                    $valueA = $a->description ?? '';
-                    $valueB = $b->description ?? '';
-                    break;
-                case 2: // Amount
+                case 1: // Amount
                     $valueA = $a->amount ?? 0;
                     $valueB = $b->amount ?? 0;
                     break;
-                case 3: // Player name
+                case 2: // Player name
                     $valueA = $a->player_name ?? '';
                     $valueB = $b->player_name ?? '';
                     break;
-                case 4: // User from
+                case 3: // User from
                     $valueA = $a->userFrom ? $a->userFrom->name : 'zzz';
                     $valueB = $b->userFrom ? $b->userFrom->name : 'zzz';
                     break;
-                case 5: // User to
+                case 4: // User to
                     $valueA = $a->userTo ? $a->userTo->name : 'zzz';
                     $valueB = $b->userTo ? $b->userTo->name : 'zzz';
                     break;
-                case 6: // Date
+                case 5: // Date
                 default:
                     $valueA = $a->date ? $a->date->timestamp : 0;
                     $valueB = $b->date ? $b->date->timestamp : 0;
@@ -255,13 +256,26 @@ class LeagueController extends Controller
         // Format data for DataTables
         $data = [];
         foreach ($paginatedTransactions as $transaction) {
-            // Type badge - Simplificado para usar siempre type_id
+            // Type badge - Combine type and description within parentheses
+            $typeText = match($transaction->type_id) {
+                1 => 'Traspaso',
+                2 => 'Mercado',
+                3 => 'Jornada',
+                4 => 'Cláusula',
+                default => 'Tipo ' . $transaction->type_id
+            };
+            
+            // Add description within parentheses if not empty
+            if (!empty($transaction->description)) {
+                $typeText .= ' (' . $transaction->description . ')';
+            }
+            
             $typeBadge = match($transaction->type_id) {
-                1 => '<span class="badge bg-primary"><i class="fas fa-exchange-alt me-1"></i>Traspaso</span>',
-                2 => '<span class="badge bg-success"><i class="fas fa-shopping-cart me-1"></i>Mercado</span>',
-                3 => '<span class="badge bg-info"><i class="fas fa-clock me-1"></i>Jornada</span>',
-                4 => '<span class="badge bg-warning text-dark"><i class="fas fa-arrow-up me-1"></i>Cláusula</span>',
-                default => '<span class="badge bg-secondary">Tipo ' . $transaction->type_id . '</span>'
+                1 => '<span class="badge bg-primary"><i class="fas fa-exchange-alt me-1"></i>' . e($typeText) . '</span>',
+                2 => '<span class="badge bg-success"><i class="fas fa-shopping-cart me-1"></i>' . e($typeText) . '</span>',
+                3 => '<span class="badge bg-info"><i class="fas fa-clock me-1"></i>' . e($typeText) . '</span>',
+                4 => '<span class="badge bg-warning text-dark"><i class="fas fa-arrow-up me-1"></i>' . e($typeText) . '</span>',
+                default => '<span class="badge bg-secondary">' . e($typeText) . '</span>'
             };
             
             // Amount formatting
@@ -281,7 +295,6 @@ class LeagueController extends Controller
             
             $data[] = [
                 $typeBadge,
-                e($transaction->description ?? '-'),
                 $amount,
                 e($transaction->player_name ?? '-'),
                 $userFrom,
@@ -510,13 +523,26 @@ class LeagueController extends Controller
         // Format data for mobile cards
         $data = [];
         foreach ($transactions as $transaction) {
-            // Type badge (simplified for mobile)
+            // Type badge (simplified for mobile) - Include description within parentheses if not empty
+            $typeText = match($transaction->type_id) {
+                1 => 'Traspaso',
+                2 => 'Mercado',
+                3 => 'Jornada',
+                4 => 'Cláusula',
+                default => 'Desconocido'
+            };
+            
+            // Add description within parentheses if not empty
+            if (!empty($transaction->description)) {
+                $typeText .= ' (' . $transaction->description . ')';
+            }
+            
             $typeBadge = match($transaction->type_id) {
-                1 => '<span class="badge bg-primary">Traspaso</span>',
-                2 => '<span class="badge bg-success">Mercado</span>',
-                3 => '<span class="badge bg-info">Jornada</span>',
-                4 => '<span class="badge bg-warning text-dark">Cláusula</span>',
-                default => '<span class="badge bg-secondary">Desconocido</span>'
+                1 => '<span class="badge bg-primary">' . e($typeText) . '</span>',
+                2 => '<span class="badge bg-success">' . e($typeText) . '</span>',
+                3 => '<span class="badge bg-info">' . e($typeText) . '</span>',
+                4 => '<span class="badge bg-warning text-dark">' . e($typeText) . '</span>',
+                default => '<span class="badge bg-secondary">' . e($typeText) . '</span>'
             };
             
             // Amount formatting
@@ -536,7 +562,6 @@ class LeagueController extends Controller
             
             $data[] = [
                 $typeBadge,
-                $transaction->description ?? '-',
                 $amount,
                 $transaction->player_name ?? '',
                 $userFrom,

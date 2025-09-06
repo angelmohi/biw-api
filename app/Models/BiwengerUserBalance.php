@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 
 class BiwengerUserBalance extends Model
 {
@@ -47,6 +48,13 @@ class BiwengerUserBalance extends Model
 
         $roundFinishedTransactions = Transaction::where('to_user_id', $user->id)
             ->where('type_id', TransactionType::ROUND_FINISHED)
+            ->whereIn('id', function($query) use ($user) {
+                $query->select(DB::raw('MAX(id)'))
+                    ->from('transaction')
+                    ->where('to_user_id', $user->id)
+                    ->where('type_id', TransactionType::ROUND_FINISHED)
+                    ->groupBy('description');
+            })
             ->get();
 
         $transferPositiveTransactions = Transaction::where('from_user_id', $user->id)
