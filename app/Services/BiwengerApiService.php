@@ -283,6 +283,193 @@ class BiwengerApiService implements BiwengerApiInterface
     }
 
     /**
+     * Get detailed players data from the Biwenger API (without cache for daily updates)
+     */
+    public function getPlayersDetailedData(League $league): array
+    {
+        $baseUrl = config('biwenger.base_url');
+        $endpoint = config('biwenger.endpoints.players');
+        $url = $baseUrl . $endpoint;
+
+        try {
+            // Make the GET request to the API to obtain the players
+            $data = $this->makeRequest($url, $league);
+
+            // Extract detailed players data from the API
+            $players = [];
+            if (isset($data['data']['players'])) {
+                foreach ($data['data']['players'] as $player) {
+                    $players[] = [
+                        'biwenger_player_id' => $player['id'],
+                        'player_name' => $player['name'] ?? '',
+                        'slug' => $player['slug'] ?? '',
+                        'price' => (int)($player['price'] ?? 0),
+                        'price_increment' => isset($player['priceIncrement']) ? (int)$player['priceIncrement'] : null,
+                    ];
+                }
+            }
+
+            return $players;
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch detailed players data from Biwenger API', [
+                'league_id' => $league->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Get player price history from Biwenger API using player slug
+     */
+    public function getPlayerPriceHistory(League $league, string $playerSlug): array
+    {
+        $baseUrl = config('biwenger.base_url');
+        $url = "{$baseUrl}/players/la-liga/{$playerSlug}";
+        $query = ['lang' => 'es', 'fields' => '*,prices'];
+
+        try {
+            $data = $this->makeRequest($url, $league, $query);
+
+            if (!isset($data['data'])) {
+                Log::warning('No data found for player', ['slug' => $playerSlug]);
+                return [];
+            }
+
+            $playerData = $data['data'];
+            $priceHistory = [];
+
+            // Extract basic player info and current price
+            $playerInfo = [
+                'biwenger_player_id' => $playerData['id'],
+                'player_name' => $playerData['name'] ?? '',
+                'slug' => $playerData['slug'] ?? $playerSlug,
+                'current_price' => (int)($playerData['price'] ?? 0),
+                'price_increment' => isset($playerData['priceIncrement']) ? (int)$playerData['priceIncrement'] : null,
+            ];
+
+            // Process historical prices if available
+            if (isset($playerData['prices']) && is_array($playerData['prices'])) {
+                foreach ($playerData['prices'] as $priceEntry) {
+                    if (is_array($priceEntry) && count($priceEntry) >= 2) {
+                        $dateString = $priceEntry[0]; // Format: YYMMDD (e.g., 240926)
+                        $price = (int)$priceEntry[1];
+
+                        // Parse date from YYMMDD format
+                        $year = '20' . substr($dateString, 0, 2);
+                        $month = substr($dateString, 2, 2);
+                        $day = substr($dateString, 4, 2);
+                        
+                        try {
+                            $date = \Carbon\Carbon::createFromFormat('Y-m-d', "{$year}-{$month}-{$day}");
+                            
+                            $priceHistory[] = [
+                                'biwenger_player_id' => $playerInfo['biwenger_player_id'],
+                                'player_name' => $playerInfo['player_name'],
+                                'slug' => $playerInfo['slug'],
+                                'price' => $price,
+                                'price_increment' => null, // Will be calculated later
+                                'record_date' => $date->format('Y-m-d'),
+                            ];
+                        } catch (\Exception $e) {
+                            Log::warning('Failed to parse date for player price history', [
+                                'slug' => $playerSlug,
+                                'date_string' => $dateString,
+                                'error' => $e->getMessage()
+                            ]);
+                        }
+                    }
+                }
+
+                // Calculate price increments
+                $priceHistory = $this->calculatePriceIncrements($priceHistory);
+            }
+
+            return [
+                'player_info' => $playerInfo,
+                'price_history' => $priceHistory
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch player price history from Biwenger API', [
+                'slug' => $playerSlug,
+                'league_id' => $league->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Calculate price increments for historical data
+     */
+    private function calculatePriceIncrements(array $priceHistory): array
+    {
+        // Sort by date ascending to calculate increments correctly
+        usort($priceHistory, function($a, $b) {
+            return strcmp($a['record_date'], $b['record_date']);
+        });
+
+        for ($i = 1; $i < count($priceHistory); $i++) {
+            $currentPrice = $priceHistory[$i]['price'];
+            $previousPrice = $priceHistory[$i - 1]['price'];
+            $priceHistory[$i]['price_increment'] = $currentPrice - $previousPrice;
+        }
+
+        return $priceHistory;
+    }
+
+    /**
+     * Get all player slugs from the Biwenger API
+     * Returns only players that have valid slugs for historical data import
+     */
+    public function getPlayerSlugs(League $league): array
+    {
+        try {
+            $allPlayers = $this->getPlayersDetailedData($league);
+            
+            $playersWithSlugs = [];
+            $playersWithoutSlugs = [];
+            
+            foreach ($allPlayers as $player) {
+                if (!empty($player['slug']) && is_string($player['slug']) && strlen($player['slug']) > 0) {
+                    $playersWithSlugs[] = [
+                        'biwenger_player_id' => $player['biwenger_player_id'],
+                        'player_name' => $player['player_name'],
+                        'slug' => $player['slug'],
+                        'current_price' => $player['price'],
+                    ];
+                } else {
+                    $playersWithoutSlugs[] = [
+                        'biwenger_player_id' => $player['biwenger_player_id'],
+                        'player_name' => $player['player_name'],
+                        'slug' => $player['slug'] ?? 'N/A',
+                    ];
+                }
+            }
+            
+            if (!empty($playersWithoutSlugs)) {
+                Log::info('Players without valid slugs found', [
+                    'league_id' => $league->id,
+                    'total_players' => count($allPlayers),
+                    'players_with_slugs' => count($playersWithSlugs),
+                    'players_without_slugs' => count($playersWithoutSlugs),
+                    'players_without_slugs_list' => array_slice($playersWithoutSlugs, 0, 10) // Log first 10 as example
+                ]);
+            }
+            
+            return $playersWithSlugs;
+            
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch player slugs from Biwenger API', [
+                'league_id' => $league->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
      * Get the name player from Biwenger API using cache
      */
     public function getPlayerName(League $league, $playerId): string
