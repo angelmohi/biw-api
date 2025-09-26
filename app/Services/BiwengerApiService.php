@@ -217,7 +217,7 @@ class BiwengerApiService implements BiwengerApiInterface
                         } else {
                             // If we find a transaction older than $to, 
                             // we can stop processing as transactions are ordered by date
-                            if ($transaction['type'] != 'text') {
+                            if ($transaction['type'] != 'text' && $transaction['type'] != 'adminText') {
                                 $foundOlderTransaction = true;
                                 break;
                             }

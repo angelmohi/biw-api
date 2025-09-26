@@ -3,12 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Contracts\BiwengerApiInterface;
+use App\Models\BiwengerUser;
 use App\Models\League;
 use App\Models\BiwengerUserBalance;
+use App\Models\Transaction;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class LeagueController extends Controller
@@ -356,6 +359,9 @@ class LeagueController extends Controller
             $league->refreshStatistics();
             $league->touch();
 
+            // Cleanup duplicate transactions and update affected user balances
+            $this->cleanupDuplicateTransactionsForLeague($league);
+
             flashSuccessMessage('Liga actualizada correctamente');
             return jsonIframeRedirection(route('leagues.show', $league->id));
         } catch (\Exception $e) {
@@ -575,5 +581,138 @@ class LeagueController extends Controller
             'recordsTotal' => $totalRecords,
             'recordsFiltered' => $totalRecords // Same as total since no filtering
         ]);
+    }
+
+    /**
+     * Remove duplicate transactions for a league and update affected user balances
+     */
+    private function cleanupDuplicateTransactionsForLeague(League $league): void
+    {
+        Log::info("🔍 Iniciando limpieza de transacciones duplicadas para liga: {$league->name}", ['league_id' => $league->id]);
+
+        try {
+            $leagueUserIds = $league->biwengerUsers->pluck('id')->toArray();
+            
+            if (empty($leagueUserIds)) {
+                Log::info("No hay usuarios en la liga {$league->name}, omitiendo limpieza", ['league_id' => $league->id]);
+                return;
+            }
+
+            $duplicateGroups = DB::table('transaction')
+                ->select('player_id', 'amount', 'from_user_id', 'to_user_id', DB::raw('COUNT(*) as count'), DB::raw('GROUP_CONCAT(id ORDER BY id) as ids'))
+                ->where(function($query) use ($leagueUserIds) {
+                    $query->whereIn('from_user_id', $leagueUserIds)
+                          ->orWhereIn('to_user_id', $leagueUserIds);
+                })
+                ->whereNotNull('player_id') // Solo transacciones con jugador
+                ->groupBy('player_id', 'amount', 'from_user_id', 'to_user_id')
+                ->having('count', '>', 1)
+                ->get();
+
+            $totalDuplicatesRemoved = 0;
+            $affectedUsers = [];
+
+            foreach ($duplicateGroups as $group) {
+                $transactionIds = explode(',', $group->ids);
+                $idsToDelete = array_slice($transactionIds, 1);
+                
+                if (!empty($idsToDelete)) {
+                    Log::info("Eliminando transacciones duplicadas", [
+                        'league_id' => $league->id,
+                        'player_id' => $group->player_id,
+                        'amount' => $group->amount,
+                        'from_user_id' => $group->from_user_id,
+                        'to_user_id' => $group->to_user_id,
+                        'total_duplicates' => count($idsToDelete),
+                        'keeping_id' => $transactionIds[0],
+                        'deleting_ids' => $idsToDelete
+                    ]);
+
+                    if ($group->from_user_id) {
+                        $affectedUsers[$group->from_user_id] = true;
+                    }
+                    if ($group->to_user_id) {
+                        $affectedUsers[$group->to_user_id] = true;
+                    }
+
+                    $deletedCount = Transaction::whereIn('id', $idsToDelete)->delete();
+                    $totalDuplicatesRemoved += $deletedCount;
+                }
+            }
+
+            Log::info("🧹 Limpieza de duplicados completada para liga: {$league->name}", [
+                'league_id' => $league->id,
+                'grupos_duplicados_encontrados' => count($duplicateGroups),
+                'transacciones_eliminadas' => $totalDuplicatesRemoved,
+                'usuarios_afectados' => count($affectedUsers)
+            ]);
+
+            if ($totalDuplicatesRemoved > 0 && !empty($affectedUsers)) {
+                $this->updateBalancesForAffectedUsers($league, array_keys($affectedUsers));
+            }
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error durante limpieza de duplicados para liga {$league->name}: " . $e->getMessage(), [
+                'league_id' => $league->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Update balances for affected users after duplicate transaction removal
+     */
+    private function updateBalancesForAffectedUsers(League $league, array $userIds): void
+    {
+        Log::info("💰 Actualizando saldos de usuarios afectados en liga: {$league->name}", [
+            'league_id' => $league->id,
+            'user_ids' => $userIds
+        ]);
+
+        try {
+            $biwengerApiService = app(\App\Contracts\BiwengerApiInterface::class);
+            $biwengerUsers = $biwengerApiService->getUsers($league);
+
+            $updatedCount = 0;
+            
+            foreach ($userIds as $userId) {
+                try {
+                    $user = BiwengerUser::find($userId);
+                    if (!$user) {
+                        Log::warning("Usuario no encontrado para actualizar saldo", ['user_id' => $userId]);
+                        continue;
+                    }
+
+                    BiwengerUserBalance::updateBalance($user, $biwengerUsers);
+                    $updatedCount++;
+
+                    Log::info("✅ Saldo actualizado para usuario: {$user->name}", [
+                        'user_id' => $userId,
+                        'league_id' => $league->id
+                    ]);
+
+                } catch (\Exception $e) {
+                    Log::error("❌ Error actualizando saldo del usuario {$userId}: " . $e->getMessage(), [
+                        'user_id' => $userId,
+                        'league_id' => $league->id,
+                        'exception' => $e->getMessage()
+                    ]);
+                }
+            }
+
+            Log::info("💰 Actualización de saldos completada para liga: {$league->name}", [
+                'league_id' => $league->id,
+                'usuarios_procesados' => count($userIds),
+                'saldos_actualizados' => $updatedCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error durante actualización de saldos para liga {$league->name}: " . $e->getMessage(), [
+                'league_id' => $league->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
     }
 }

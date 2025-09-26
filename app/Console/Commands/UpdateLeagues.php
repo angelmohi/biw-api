@@ -142,7 +142,7 @@ class UpdateLeagues extends Command
     }
 
     /**
-     * Elimina transacciones duplicadas para una liga específica y actualiza los saldos
+     * Remove duplicate transactions for a league and update affected user balances
      */
     private function cleanupDuplicateTransactionsForLeague(League $league): void
     {
@@ -219,7 +219,7 @@ class UpdateLeagues extends Command
     }
 
     /**
-     * Actualiza los saldos de usuarios específicos después de eliminar duplicados
+     * Update balances for affected users after duplicate transaction removal
      */
     private function updateBalancesForAffectedUsers(League $league, array $userIds): void
     {

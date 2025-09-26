@@ -53,7 +53,7 @@ class BiwengerUserBalance extends Model
                     ->from('transaction')
                     ->where('to_user_id', $user->id)
                     ->where('type_id', TransactionType::ROUND_FINISHED)
-                    ->groupBy('description');
+                    ->groupBy(DB::raw('REPLACE(description, " (postponed)", "")'));
             })
             ->get();
 

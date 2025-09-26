@@ -137,7 +137,7 @@
                                                 Dinero
                                                 <i class="fas fa-sort ms-1"></i>
                                             </th>
-                                            <th class="sortable" width="120" data-column="cash">
+                                            <th class="sortable" width="120" data-column="maximum_bid">
                                                 Puja Máxima
                                                 <i class="fas fa-sort ms-1"></i>
                                             </th>
@@ -159,6 +159,7 @@
                                                 data-points="{{ $user->points }}"
                                                 data-team-value="{{ $currentBalance?->team_value ?? 0 }}"
                                                 data-cash="{{ $currentBalance?->cash ?? 0 }}"
+                                                data-maximum-bid="{{ $currentBalance?->maximum_bid ?? 0 }}"
                                                 data-balance="{{ $currentBalance?->balance ?? 0 }}"
                                                 @if($hasNegativeCash) style="background-color: #f8d7da !important;" @endif>
                                                 <td class="text-center align-middle" @if($hasNegativeCash) style="background-color: #f8d7da !important;" @endif>
