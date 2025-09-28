@@ -56,6 +56,12 @@
                     Mis Ligas
                 </a>
             </li>
+            <li class="nav-item">
+                <a class="nav-link" href="{{ route('players.index') }}">
+                    <i class="nav-icon fas fa-users"></i>
+                    Jugadores
+                </a>
+            </li>
             @if(Auth::user()->canManageAccess())
             <li class="nav-item">
                 <a class="nav-link" href="{{ route('user-leagues.manage') }}">

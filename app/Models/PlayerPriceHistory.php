@@ -118,4 +118,20 @@ class PlayerPriceHistory extends Model
             ->limit($limit)
             ->get();
     }
+
+    /**
+     * Get price in euros (already stored in euros)
+     */
+    public function getPriceInEuros()
+    {
+        return $this->price ? $this->price : 0;
+    }
+
+    /**
+     * Get price increment in euros (already stored in euros)
+     */
+    public function getPriceIncrementInEuros()
+    {
+        return $this->price_increment ? $this->price_increment : 0;
+    }
 }

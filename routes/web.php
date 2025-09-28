@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\LeagueController;
+use App\Http\Controllers\PlayerController;
 use App\Http\Controllers\UserLeagueController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
@@ -33,6 +34,13 @@ Route::prefix('leagues')->controller(LeagueController::class)->group(function() 
     Route::get('/{league}', 'show')->name('leagues.show');
     Route::get('/{league}/transactions', 'getTransactions')->name('leagues.transactions');
     Route::get('/{league}/balance-chart', 'getBalanceChart')->name('leagues.balance-chart');
+});
+
+// Player Routes (Available to all users)
+Route::prefix('players')->controller(PlayerController::class)->group(function() {
+    Route::get('/', 'index')->name('players.index');
+    Route::get('/{playerId}', 'show')->name('players.show');
+    Route::get('/{playerId}/chart-data', 'getChartData')->name('players.chart-data');
 });
 
 // User League Management Routes (Admin only)

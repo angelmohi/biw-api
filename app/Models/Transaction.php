@@ -48,6 +48,43 @@ class Transaction extends Model
     }
 
     /**
+     * Get the player price on the transaction date
+     */
+    public function getPlayerPriceOnDate()
+    {
+        if (!$this->player_id || !$this->date) {
+            return null;
+        }
+
+        $priceRecord = PlayerPriceHistory::where('biwenger_player_id', $this->player_id)
+            ->where('record_date', $this->date->format('Y-m-d'))
+            ->first();
+
+        return $priceRecord;
+    }
+
+    /**
+     * Get formatted player price on the transaction date
+     */
+    public function getFormattedPlayerPrice()
+    {
+        $priceRecord = $this->getPlayerPriceOnDate();
+        
+        if (!$priceRecord) {
+            return null;
+        }
+
+        return [
+            'price' => $priceRecord->getPriceInEuros(),
+            'price_increment' => $priceRecord->getPriceIncrementInEuros(),
+            'formatted_price' => number_format($priceRecord->getPriceInEuros(), 0, ',', '.') . '€',
+            'formatted_increment' => $priceRecord->price_increment >= 0 
+                ? '+' . number_format($priceRecord->getPriceIncrementInEuros(), 0, ',', '.') . '€'
+                : number_format($priceRecord->getPriceIncrementInEuros(), 0, ',', '.') . '€'
+        ];
+    }
+
+    /**
      * Paginated list of transactions
      */
     public static function listing(DataTablesRequest $request) : array
