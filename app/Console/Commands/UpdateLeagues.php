@@ -162,7 +162,8 @@ class UpdateLeagues extends Command
                     $query->whereIn('from_user_id', $leagueUserIds)
                           ->orWhereIn('to_user_id', $leagueUserIds);
                 })
-                ->whereNotNull('player_id') // Solo transacciones con jugador
+                ->whereNotNull('player_id')
+                ->where('type_id', '!=', 4)
                 ->groupBy('player_id', 'amount', 'from_user_id', 'to_user_id')
                 ->having('count', '>', 1)
                 ->get();

@@ -4,7 +4,7 @@
 <div class="row mb-5">
     <div class="col-12 mb-4">
         <div class="card">
-            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-header" style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <h3 class="mb-0 fw-bold text-white">
@@ -26,7 +26,7 @@
             <!-- Top 5 Increases -->
             <div class="col-md-6 mb-4">
                 <div class="card h-100">
-                    <div class="card-header bg-success text-white">
+                    <div class="card-header text-white" style="background-color: #1abc9c;">
                         <h5 class="mb-0">
                             <i class="fas fa-arrow-up me-2"></i>Top 5 Subidas del Día
                         </h5>

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BiwengerUserBalance extends Model
 {
@@ -37,8 +38,14 @@ class BiwengerUserBalance extends Model
     /**
      * Update the user's balance for the current date
      */
-    public static function updateBalance(BiwengerUser $user, array $biwengerUsers): BiwengerUserBalance
+    public static function updateBalance(BiwengerUser $user, array $biwengerUsers): ?BiwengerUserBalance
     {
+        // Skip if user is not in the biwenger API response (expelled user)
+        if (!isset($biwengerUsers[$user->biwenger_id])) {
+            Log::info("⏭️  Skipping expelled user: {$user->name} (ID: {$user->biwenger_id})");
+            return null;
+        }
+
         $initialBalance = $user->initial_balance;
         $today = now()->format('Y-m-d');
 

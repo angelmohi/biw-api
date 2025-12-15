@@ -310,12 +310,27 @@ class League extends Model
             }
         }
 
-        // Calculate average overpay percentage for each user
+        // Calculate median overpay percentage for each user
         foreach ($userAnalysis as $userId => &$analysis) {
             if ($analysis['total_market_value'] > 0) {
                 $totalOverpay = $analysis['total_amount_paid'] - $analysis['total_market_value'];
-                $analysis['average_overpay_percentage'] = ($totalOverpay / $analysis['total_market_value']) * 100;
                 $analysis['total_overpay_amount'] = $totalOverpay;
+                
+                // Calculate median of individual overpay percentages
+                $overpayPercentages = collect($analysis['purchases'])->pluck('overpay_percentage')->sort()->values();
+                $count = $overpayPercentages->count();
+                
+                if ($count > 0) {
+                    if ($count % 2 == 0) {
+                        // Even number of elements: average of the two middle values
+                        $analysis['average_overpay_percentage'] = ($overpayPercentages[$count/2 - 1] + $overpayPercentages[$count/2]) / 2;
+                    } else {
+                        // Odd number of elements: middle value
+                        $analysis['average_overpay_percentage'] = $overpayPercentages[floor($count/2)];
+                    }
+                } else {
+                    $analysis['average_overpay_percentage'] = 0;
+                }
             } else {
                 $analysis['average_overpay_percentage'] = 0;
                 $analysis['total_overpay_amount'] = 0;
@@ -391,6 +406,7 @@ class League extends Model
                     $userProfitAnalysis[$sellerId]['total_market_value'] += $marketValue;
                     
                     $userProfitAnalysis[$sellerId]['sales'][] = [
+                        'player_id' => $transfer->player_id,
                         'player_name' => $transfer->player_name,
                         'buyer_name' => $transfer->userTo->name,
                         'sale_amount' => $revenue,
@@ -402,6 +418,7 @@ class League extends Model
                 } else {
                     // Sale without market value data
                     $userProfitAnalysis[$sellerId]['sales'][] = [
+                        'player_id' => $transfer->player_id,
                         'player_name' => $transfer->player_name,
                         'buyer_name' => $transfer->userTo->name,
                         'sale_amount' => $revenue,
@@ -414,6 +431,7 @@ class League extends Model
             } else {
                 // Sale without player_id
                 $userProfitAnalysis[$sellerId]['sales'][] = [
+                    'player_id' => null,
                     'player_name' => $transfer->player_name,
                     'buyer_name' => $transfer->userTo->name,
                     'sale_amount' => $revenue,

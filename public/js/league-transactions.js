@@ -69,7 +69,7 @@ $(document).ready(function() {
                                             ${transaction[1]}
                                         </div>
                                     </div>
-                                    ${transaction[2] ? `<div class="transaction-player mb-2"><i class="fas fa-user me-1"></i>${transaction[2]}</div>` : ''}
+                                    ${transaction[2] ? `<div class="transaction-player">${transaction[2]}</div>` : ''}
                                     <div class="row text-muted small">
                                         ${transaction[3] ? `<div class="col-6"><strong>De:</strong> ${transaction[3]}</div>` : ''}
                                         ${transaction[4] ? `<div class="col-6"><strong>Para:</strong> ${transaction[4]}</div>` : ''}
@@ -136,7 +136,9 @@ $(document).ready(function() {
                     orderable: true,
                     searchable: true,
                     className: 'align-middle',
-                    width: '25%'
+                    width: '25%',
+                    orderDataType: 'dom-data-player', // Custom ordering by player name
+                    type: 'string'
                 },
                 { 
                     data: 3, 
@@ -212,6 +214,14 @@ $(document).ready(function() {
                 // Add custom classes after initialization
                 $('.dataTables_length select').addClass('form-select form-select-sm');
                 $('.dataTables_filter input').addClass('form-control form-control-sm').attr('placeholder', 'Buscar transacciones...');
+                
+                // Add DataTables plugin to support ordering by data-player-name attribute
+                $.fn.dataTable.ext.order['dom-data-player'] = function(settings, col) {
+                    return this.api().column(col, {order:'index'}).nodes().map(function(td, i) {
+                        var playerName = $(td).find('[data-player-name]').attr('data-player-name');
+                        return playerName ? playerName.toLowerCase() : '-';
+                    });
+                };
             }
         });
     }

@@ -200,9 +200,9 @@ class LeagueStatsService
      */
     private function processClauseIncrement($transaction, $players, $league): void
     {
-        foreach ($transaction['content'] as $clauseIncrement) {
+        foreach ($transaction['content'] as $index => $clauseIncrement) {
             // Generate unique hash for this clause increment
-            $hash = $this->generateTransactionHash($transaction, TransactionType::CLAUSE_INCREMENT, $clauseIncrement);
+            $hash = $this->generateTransactionHash($transaction, TransactionType::CLAUSE_INCREMENT, $clauseIncrement, $index);
             
             // Skip if transaction already exists
             if ($this->transactionExists($hash)) {
@@ -235,7 +235,7 @@ class LeagueStatsService
     /**
      * Generate a unique hash for a transaction to avoid duplicates
      */
-    private function generateTransactionHash($transaction, $type, $contentItem = null): string
+    private function generateTransactionHash($transaction, $type, $contentItem = null, $index = null): string
     {
         $data = [
             'date' => $transaction['date'],
@@ -266,6 +266,7 @@ class LeagueStatsService
                 $data['player_id'] = $contentItem['player'];
                 $data['amount'] = $contentItem['amount'];
                 $data['from'] = $contentItem['user']['id'];
+                $data['index'] = $index;
                 break;
         }
 

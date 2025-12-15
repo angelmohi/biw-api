@@ -286,6 +286,46 @@ class LeagueController extends Controller
                 ? '<span class="fw-bold">' . number_format($transaction->amount, 0, ',', '.') . ' <small class="text-muted">€</small></span>'
                 : '<span class="text-muted">-</span>';
             
+            // Player information with image and market value
+            $playerInfo = '-';
+            if ($transaction->player_name) {
+                // Clean player name for URL encoding
+                $cleanPlayerName = $this->cleanUtf8($transaction->player_name);
+                $playerNameForUrl = urlencode(strtoupper(substr($cleanPlayerName, 0, 2)));
+                
+                $playerImageUrl = $transaction->player_id 
+                    ? 'https://cdn.biwenger.com/cdn-cgi/image/f=avif/i/p/' . $transaction->player_id . '.png'
+                    : '';
+                
+                $fallbackImage = 'https://via.placeholder.com/35x35/6c757d/ffffff?text=' . $playerNameForUrl;
+                
+                // Get player market value on transaction date
+                $playerPrice = $transaction->getFormattedPlayerPrice();
+                
+                $playerInfo = '<div class="d-flex align-items-center" data-player-name="' . e($cleanPlayerName) . '">';
+                
+                if ($transaction->player_id) {
+                    $playerInfo .= '<img src="' . $playerImageUrl . '" 
+                                        alt="' . e($cleanPlayerName) . '" 
+                                        class="rounded-circle me-2" 
+                                        width="35" 
+                                        height="35" 
+                                        style="object-fit: cover;"
+                                        onerror="this.src=\'' . $fallbackImage . '\'">';
+                }
+                
+                $playerInfo .= '<div class="player-details">';
+                $playerInfo .= '<div class="fw-bold">' . e($cleanPlayerName) . '</div>';
+                
+                if ($playerPrice) {
+                    $priceClass = $playerPrice['price_increment'] >= 0 ? 'text-success' : 'text-danger';
+                    $playerInfo .= '<small class="text-muted">VM: ' . $playerPrice['formatted_price'] . '</small>';
+                }
+                
+                $playerInfo .= '</div>';
+                $playerInfo .= '</div>';
+            }
+            
             // User from
             $userFrom = $transaction->userFrom 
                 ? '<span class="text-danger">' . e($transaction->userFrom->name) . '</span>'
@@ -299,19 +339,22 @@ class LeagueController extends Controller
             $data[] = [
                 $typeBadge,
                 $amount,
-                e($transaction->player_name ?? '-'),
+                $playerInfo,
                 $userFrom,
                 $userTo,
                 '<small>' . $transaction->date->format('d/m/Y H:i') . '</small>'
             ];
         }
         
+        // Clean UTF-8 encoding issues before returning JSON
+        $cleanedData = $this->cleanUtf8($data);
+        
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalRecords,
             'recordsFiltered' => $filteredRecords,
-            'data' => $data
-        ]);
+            'data' => $cleanedData
+        ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -556,6 +599,46 @@ class LeagueController extends Controller
                 ? '<span class="fw-bold text-success">' . number_format($transaction->amount, 0, ',', '.') . '€</span>'
                 : '<span class="text-muted">-</span>';
             
+            // Player information with image and market value for mobile
+            $playerInfo = '';
+            if ($transaction->player_name) {
+                // Clean player name for URL encoding
+                $cleanPlayerName = $this->cleanUtf8($transaction->player_name);
+                $playerNameForUrl = urlencode(strtoupper(substr($cleanPlayerName, 0, 2)));
+                
+                $playerImageUrl = $transaction->player_id 
+                    ? 'https://cdn.biwenger.com/cdn-cgi/image/f=avif/i/p/' . $transaction->player_id . '.png'
+                    : '';
+                
+                $fallbackImage = 'https://via.placeholder.com/40x40/6c757d/ffffff?text=' . $playerNameForUrl;
+                
+                // Get player market value on transaction date
+                $playerPrice = $transaction->getFormattedPlayerPrice();
+                
+                $playerInfo = '<div class="d-flex align-items-center mb-2">';
+                
+                if ($transaction->player_id) {
+                    $playerInfo .= '<img src="' . $playerImageUrl . '" 
+                                        alt="' . e($cleanPlayerName) . '" 
+                                        class="rounded-circle me-2" 
+                                        width="40" 
+                                        height="40" 
+                                        style="object-fit: cover; border: 2px solid #dee2e6;"
+                                        onerror="this.src=\'' . $fallbackImage . '\'">';
+                }
+                
+                $playerInfo .= '<div class="flex-grow-1">';
+                $playerInfo .= '<div class="fw-bold">' . e($cleanPlayerName) . '</div>';
+                
+                if ($playerPrice) {
+                    $priceClass = $playerPrice['price_increment'] >= 0 ? 'text-success' : 'text-danger';
+                    $playerInfo .= '<small class="text-muted">VM: ' . $playerPrice['formatted_price'] . '</small>';
+                }
+                
+                $playerInfo .= '</div>';
+                $playerInfo .= '</div>';
+            }
+            
             // User from
             $userFrom = $transaction->userFrom 
                 ? $transaction->userFrom->name
@@ -569,18 +652,21 @@ class LeagueController extends Controller
             $data[] = [
                 $typeBadge,
                 $amount,
-                $transaction->player_name ?? '',
+                $playerInfo,
                 $userFrom,
                 $userTo,
                 $transaction->date->format('d/m/Y H:i')
             ];
         }
         
+        // Clean UTF-8 encoding issues before returning JSON
+        $cleanedData = $this->cleanUtf8($data);
+        
         return response()->json([
-            'data' => $data,
+            'data' => $cleanedData,
             'recordsTotal' => $totalRecords,
             'recordsFiltered' => $totalRecords // Same as total since no filtering
-        ]);
+        ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
     /**
@@ -604,7 +690,8 @@ class LeagueController extends Controller
                     $query->whereIn('from_user_id', $leagueUserIds)
                           ->orWhereIn('to_user_id', $leagueUserIds);
                 })
-                ->whereNotNull('player_id') // Solo transacciones con jugador
+                ->whereNotNull('player_id')
+                ->where('type_id', '!=', 4)
                 ->groupBy('player_id', 'amount', 'from_user_id', 'to_user_id')
                 ->having('count', '>', 1)
                 ->get();
@@ -714,5 +801,33 @@ class LeagueController extends Controller
                 'trace' => $e->getTraceAsString()
             ]);
         }
+    }
+
+    /**
+     * Clean malformed UTF-8 characters from data
+     * 
+     * @param mixed $data
+     * @return mixed
+     */
+    private function cleanUtf8($data)
+    {
+        if (is_array($data)) {
+            return array_map([$this, 'cleanUtf8'], $data);
+        }
+        
+        if (is_string($data)) {
+            // First, try to fix the encoding
+            if (!mb_check_encoding($data, 'UTF-8')) {
+                // If not valid UTF-8, try to convert it
+                $data = mb_convert_encoding($data, 'UTF-8', 'UTF-8');
+            }
+            
+            // Remove any remaining invalid UTF-8 sequences
+            $data = mb_scrub($data, 'UTF-8');
+            
+            return $data;
+        }
+        
+        return $data;
     }
 }

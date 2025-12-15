@@ -34,10 +34,10 @@
                                     @if($league->biwengerUsers->count() > 0)
                                         <h6 class="text-muted mb-2">Top 3 Clasificación:</h6>
                                         <div class="ranking">
-                                            @foreach($league->biwengerUsers->sortBy('position')->take(3) as $index => $user)
+                                            @foreach($league->biwengerUsers->filter(function($user) { return $user->position > 0 && $user->points > 0; })->sortBy('position')->take(3) as $index => $user)
                                                 <div class="d-flex justify-content-between align-items-center mb-2 p-2 rounded" style="background-color: #f8f9fa;">
                                                     <div class="d-flex align-items-center">
-                                                        <i class="fas fa-medal me-2 medal-{{ $index + 1 }}" style="font-size: 1.1em;"></i>
+                                                        <i class="fas fa-medal me-2 medal-{{ $user->position }}" style="font-size: 1.1em;"></i>
                                                         <div class="user-avatar me-2" style="width: 32px; height: 32px; border-radius: 50%; background: white; display: flex; align-items: center; justify-content: center; overflow: hidden; border: 2px solid #dee2e6;">
                                                             @if($user->icon)
                                                                 <img src="{{ $user->icon }}" alt="{{ $user->name }}" style="width: 100%; height: 100%; object-fit: cover;">
