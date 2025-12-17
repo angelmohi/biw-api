@@ -5,7 +5,7 @@
     <!-- Player Header -->
     <div class="col-12 mb-4">
         <div class="card">
-            <div class="card-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-header" style="background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);">
                 <div class="d-flex justify-content-between align-items-center">
                     <div class="d-flex align-items-center">
                         <div class="me-4">

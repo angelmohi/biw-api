@@ -1009,7 +1009,7 @@
                 <div class="tab-pane fade show active" id="mobile-classification" role="tabpanel" aria-labelledby="mobile-classification-tab">
                     @if($league->biwengerUsers->count() > 0)
                         <div id="classificationMobile">
-                            @foreach($league->biwengerUsers as $user)
+                            @foreach($league->biwengerUsers->filter(function($user) { return $user->position > 0 && $user->points > 0; }) as $user)
                                 @php
                                     $currentBalance = $user->balances->sortByDesc('created_at')->first();
                                     $hasNegativeCash = $currentBalance && $currentBalance->cash < 0;

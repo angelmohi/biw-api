@@ -493,4 +493,80 @@ class BiwengerApiService implements BiwengerApiInterface
         
         return '';
     }
+
+    /**
+     * Get user's current squad from Biwenger API
+     * 
+     * @param League $league
+     * @param int $userId Biwenger user ID
+     * @return array Array of players with id, owner.date, owner.price
+     */
+    public function getUserSquad(League $league, int $userId): array
+    {
+        $baseUrl = config('biwenger.base_url');
+        $url = "{$baseUrl}/user/{$userId}?fields=*,lineup(type,playersID,reservesID,captain,striker,coach,date),players(id,owner),market,offers,-trophies";
+
+        try {
+            $data = $this->makeRequest($url, $league);
+            
+            if (!isset($data['data']['players'])) {
+                Log::warning('No players found for user', [
+                    'user_id' => $userId,
+                    'league_id' => $league->id
+                ]);
+                return [];
+            }
+
+            return $data['data']['players'];
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch user squad from Biwenger API', [
+                'user_id' => $userId,
+                'league_id' => $league->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
+
+    /**
+     * Get player's price history from Biwenger API
+     * 
+     * @param League $league
+     * @param int $playerId Biwenger player ID
+     * @return array Array with format [YYMMDD => price]
+     */
+    public function getPlayerPrices(League $league, int $playerId): array
+    {
+        $baseUrl = config('biwenger.base_url');
+        $url = "{$baseUrl}/players/la-liga/{$playerId}?lang=es&fields=*%2Cprices";
+
+        try {
+            $data = $this->makeRequest($url, $league);
+            
+            if (!isset($data['data']['prices'])) {
+                Log::warning('No price history found for player', [
+                    'player_id' => $playerId,
+                    'league_id' => $league->id
+                ]);
+                return [];
+            }
+
+            // Convert prices array to associative array for easier lookup
+            // Format: [YYMMDD => price]
+            $prices = [];
+            foreach ($data['data']['prices'] as $priceEntry) {
+                [$dateKey, $price] = $priceEntry;
+                $prices[$dateKey] = $price;
+            }
+
+            return $prices;
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch player prices from Biwenger API', [
+                'player_id' => $playerId,
+                'league_id' => $league->id,
+                'error' => $e->getMessage()
+            ]);
+            return [];
+        }
+    }
 }

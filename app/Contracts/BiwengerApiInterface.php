@@ -35,4 +35,14 @@ interface BiwengerApiInterface
      * Get the name player from Biwenger API using cache
      */
     public function getPlayerName(League $league, $playerId): string;
+
+    /**
+     * Get user's current squad from Biwenger API
+     */
+    public function getUserSquad(League $league, int $userId): array;
+
+    /**
+     * Get player's price history from Biwenger API
+     */
+    public function getPlayerPrices(League $league, int $playerId): array;
 }

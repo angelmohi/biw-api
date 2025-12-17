@@ -143,6 +143,8 @@ class UpdateLeagues extends Command
 
     /**
      * Remove duplicate transactions for a league and update affected user balances
+     * Considers duplicates transactions with the same player_id, amount, from_user_id, to_user_id
+     * that occur within 15 minutes of each other
      */
     private function cleanupDuplicateTransactionsForLeague(League $league): void
     {
@@ -156,52 +158,86 @@ class UpdateLeagues extends Command
                 return;
             }
 
-            $duplicateGroups = DB::table('transaction')
-                ->select('player_id', 'amount', 'from_user_id', 'to_user_id', DB::raw('COUNT(*) as count'), DB::raw('GROUP_CONCAT(id ORDER BY id) as ids'))
+            // Get all transactions grouped by player, amount, and users involved
+            $transactionGroups = DB::table('transaction')
+                ->select('id', 'player_id', 'amount', 'from_user_id', 'to_user_id', 'date')
                 ->where(function($query) use ($leagueUserIds) {
                     $query->whereIn('from_user_id', $leagueUserIds)
                           ->orWhereIn('to_user_id', $leagueUserIds);
                 })
                 ->whereNotNull('player_id')
                 ->where('type_id', '!=', 4)
-                ->groupBy('player_id', 'amount', 'from_user_id', 'to_user_id')
-                ->having('count', '>', 1)
-                ->get();
+                ->orderBy('player_id')
+                ->orderBy('amount')
+                ->orderBy('from_user_id')
+                ->orderBy('to_user_id')
+                ->orderBy('date')
+                ->get()
+                ->groupBy(function($item) {
+                    return $item->player_id . '_' . $item->amount . '_' . $item->from_user_id . '_' . $item->to_user_id;
+                });
 
             $totalDuplicatesRemoved = 0;
             $affectedUsers = [];
+            $idsToDelete = [];
 
-            foreach ($duplicateGroups as $group) {
-                $transactionIds = explode(',', $group->ids);
-                $idsToDelete = array_slice($transactionIds, 1);
-                
-                if (!empty($idsToDelete)) {
-                    Log::info("Eliminando transacciones duplicadas", [
-                        'league_id' => $league->id,
-                        'player_id' => $group->player_id,
-                        'amount' => $group->amount,
-                        'from_user_id' => $group->from_user_id,
-                        'to_user_id' => $group->to_user_id,
-                        'total_duplicates' => count($idsToDelete),
-                        'keeping_id' => $transactionIds[0],
-                        'deleting_ids' => $idsToDelete
-                    ]);
-
-                    if ($group->from_user_id) {
-                        $affectedUsers[$group->from_user_id] = true;
-                    }
-                    if ($group->to_user_id) {
-                        $affectedUsers[$group->to_user_id] = true;
-                    }
-
-                    $deletedCount = Transaction::whereIn('id', $idsToDelete)->delete();
-                    $totalDuplicatesRemoved += $deletedCount;
+            // For each group, check for duplicates within 15 minutes
+            foreach ($transactionGroups as $groupKey => $transactions) {
+                if (count($transactions) < 2) {
+                    continue;
                 }
+
+                // Convert to array and sort by date
+                $transactionsArray = $transactions->sortBy('date')->values()->all();
+                
+                for ($i = 0; $i < count($transactionsArray) - 1; $i++) {
+                    $current = $transactionsArray[$i];
+                    $next = $transactionsArray[$i + 1];
+                    
+                    $currentDate = new \DateTime($current->date);
+                    $nextDate = new \DateTime($next->date);
+                    $diffInMinutes = ($nextDate->getTimestamp() - $currentDate->getTimestamp()) / 60;
+                    
+                    // If transactions are within 15 minutes, mark the second one for deletion
+                    if ($diffInMinutes <= 15) {
+                        $idsToDelete[] = $next->id;
+                        
+                        Log::info("Transacción duplicada detectada (margen 15 min)", [
+                            'league_id' => $league->id,
+                            'player_id' => $current->player_id,
+                            'amount' => $current->amount,
+                            'from_user_id' => $current->from_user_id,
+                            'to_user_id' => $current->to_user_id,
+                            'fecha_original' => $current->date,
+                            'fecha_duplicada' => $next->date,
+                            'diferencia_minutos' => round($diffInMinutes, 2),
+                            'keeping_id' => $current->id,
+                            'deleting_id' => $next->id
+                        ]);
+                        
+                        // Track affected users
+                        if ($current->from_user_id) {
+                            $affectedUsers[$current->from_user_id] = true;
+                        }
+                        if ($current->to_user_id) {
+                            $affectedUsers[$current->to_user_id] = true;
+                        }
+                        
+                        // Skip the next transaction since we've marked it for deletion
+                        $i++;
+                    }
+                }
+            }
+
+            // Delete all identified duplicates
+            if (!empty($idsToDelete)) {
+                $deletedCount = Transaction::whereIn('id', $idsToDelete)->delete();
+                $totalDuplicatesRemoved = $deletedCount;
             }
 
             Log::info("🧹 Limpieza de duplicados completada para liga: {$league->name}", [
                 'league_id' => $league->id,
-                'grupos_duplicados_encontrados' => count($duplicateGroups),
+                'grupos_analizados' => count($transactionGroups),
                 'transacciones_eliminadas' => $totalDuplicatesRemoved,
                 'usuarios_afectados' => count($affectedUsers)
             ]);

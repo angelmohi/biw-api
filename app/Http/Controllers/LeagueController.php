@@ -381,12 +381,21 @@ class LeagueController extends Controller
                 'icon' => $user['icon'],
                 'position' => $user['position'],
                 'points' => $user['points'],
-                'initial_balance' => config('leagues.initial_balance') - $user['teamValue'],
+                'initial_balance' => 0, // Will be calculated after transactions are imported
             ]);
         }
 
-        // Refresh the league's statistics
+        // Refresh the league's statistics (imports transactions and creates initial balances)
         $league->refreshStatistics();
+
+        // Calculate initial balance for each user based on transactions
+        $this->calculateInitialBalances($league);
+
+        // Recalculate all balances with the corrected initial_balance
+        $league->refresh();
+        foreach ($league->biwengerUsers as $user) {
+            BiwengerUserBalance::updateBalance($user, $this->biwengerApi->getUsers($league));
+        }
 
         flashSuccessMessage('Liga creada correctamente');
         return jsonIframeRedirection(route('leagues.show', $league->id));
@@ -671,6 +680,8 @@ class LeagueController extends Controller
 
     /**
      * Remove duplicate transactions for a league and update affected user balances
+     * Considers duplicates transactions with the same player_id, amount, from_user_id, to_user_id
+     * that occur within 15 minutes of each other
      */
     private function cleanupDuplicateTransactionsForLeague(League $league): void
     {
@@ -684,52 +695,86 @@ class LeagueController extends Controller
                 return;
             }
 
-            $duplicateGroups = DB::table('transaction')
-                ->select('player_id', 'amount', 'from_user_id', 'to_user_id', DB::raw('COUNT(*) as count'), DB::raw('GROUP_CONCAT(id ORDER BY id) as ids'))
+            // Get all transactions grouped by player, amount, and users involved
+            $transactionGroups = DB::table('transaction')
+                ->select('id', 'player_id', 'amount', 'from_user_id', 'to_user_id', 'date')
                 ->where(function($query) use ($leagueUserIds) {
                     $query->whereIn('from_user_id', $leagueUserIds)
                           ->orWhereIn('to_user_id', $leagueUserIds);
                 })
                 ->whereNotNull('player_id')
                 ->where('type_id', '!=', 4)
-                ->groupBy('player_id', 'amount', 'from_user_id', 'to_user_id')
-                ->having('count', '>', 1)
-                ->get();
+                ->orderBy('player_id')
+                ->orderBy('amount')
+                ->orderBy('from_user_id')
+                ->orderBy('to_user_id')
+                ->orderBy('date')
+                ->get()
+                ->groupBy(function($item) {
+                    return $item->player_id . '_' . $item->amount . '_' . $item->from_user_id . '_' . $item->to_user_id;
+                });
 
             $totalDuplicatesRemoved = 0;
             $affectedUsers = [];
+            $idsToDelete = [];
 
-            foreach ($duplicateGroups as $group) {
-                $transactionIds = explode(',', $group->ids);
-                $idsToDelete = array_slice($transactionIds, 1);
-                
-                if (!empty($idsToDelete)) {
-                    Log::info("Eliminando transacciones duplicadas", [
-                        'league_id' => $league->id,
-                        'player_id' => $group->player_id,
-                        'amount' => $group->amount,
-                        'from_user_id' => $group->from_user_id,
-                        'to_user_id' => $group->to_user_id,
-                        'total_duplicates' => count($idsToDelete),
-                        'keeping_id' => $transactionIds[0],
-                        'deleting_ids' => $idsToDelete
-                    ]);
-
-                    if ($group->from_user_id) {
-                        $affectedUsers[$group->from_user_id] = true;
-                    }
-                    if ($group->to_user_id) {
-                        $affectedUsers[$group->to_user_id] = true;
-                    }
-
-                    $deletedCount = Transaction::whereIn('id', $idsToDelete)->delete();
-                    $totalDuplicatesRemoved += $deletedCount;
+            // For each group, check for duplicates within 15 minutes
+            foreach ($transactionGroups as $groupKey => $transactions) {
+                if (count($transactions) < 2) {
+                    continue;
                 }
+
+                // Convert to array and sort by date
+                $transactionsArray = $transactions->sortBy('date')->values()->all();
+                
+                for ($i = 0; $i < count($transactionsArray) - 1; $i++) {
+                    $current = $transactionsArray[$i];
+                    $next = $transactionsArray[$i + 1];
+                    
+                    $currentDate = new \DateTime($current->date);
+                    $nextDate = new \DateTime($next->date);
+                    $diffInMinutes = ($nextDate->getTimestamp() - $currentDate->getTimestamp()) / 60;
+                    
+                    // If transactions are within 15 minutes, mark the second one for deletion
+                    if ($diffInMinutes <= 15) {
+                        $idsToDelete[] = $next->id;
+                        
+                        Log::info("Transacción duplicada detectada (margen 15 min)", [
+                            'league_id' => $league->id,
+                            'player_id' => $current->player_id,
+                            'amount' => $current->amount,
+                            'from_user_id' => $current->from_user_id,
+                            'to_user_id' => $current->to_user_id,
+                            'fecha_original' => $current->date,
+                            'fecha_duplicada' => $next->date,
+                            'diferencia_minutos' => round($diffInMinutes, 2),
+                            'keeping_id' => $current->id,
+                            'deleting_id' => $next->id
+                        ]);
+                        
+                        // Track affected users
+                        if ($current->from_user_id) {
+                            $affectedUsers[$current->from_user_id] = true;
+                        }
+                        if ($current->to_user_id) {
+                            $affectedUsers[$current->to_user_id] = true;
+                        }
+                        
+                        // Skip the next transaction since we've marked it for deletion
+                        $i++;
+                    }
+                }
+            }
+
+            // Delete all identified duplicates
+            if (!empty($idsToDelete)) {
+                $deletedCount = Transaction::whereIn('id', $idsToDelete)->delete();
+                $totalDuplicatesRemoved = $deletedCount;
             }
 
             Log::info("🧹 Limpieza de duplicados completada para liga: {$league->name}", [
                 'league_id' => $league->id,
-                'grupos_duplicados_encontrados' => count($duplicateGroups),
+                'grupos_analizados' => count($transactionGroups),
                 'transacciones_eliminadas' => $totalDuplicatesRemoved,
                 'usuarios_afectados' => count($affectedUsers)
             ]);
@@ -796,6 +841,168 @@ class LeagueController extends Controller
 
         } catch (\Exception $e) {
             Log::error("❌ Error durante actualización de saldos para liga {$league->name}: " . $e->getMessage(), [
+                'league_id' => $league->id,
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+        }
+    }
+
+    /**
+     * Calculate initial balance for users based on initial squad reconstruction
+     */
+    private function calculateInitialBalances(League $league): void
+    {
+        Log::info("💰 Calculando balances iniciales para liga: {$league->name}", ['league_id' => $league->id]);
+
+        if (!$league->start_date) {
+            Log::warning("Liga sin fecha de inicio, usando método legacy", ['league_id' => $league->id]);
+            return;
+        }
+
+        try {
+            // Convert start_date to YYMMDD format for API lookup
+            $dateKey = (int) $league->start_date->format('ymd');
+            
+            foreach ($league->biwengerUsers as $user) {
+                // Get ALL purchases for this user (grouped by player)
+                $purchasesByPlayer = Transaction::where('to_user_id', $user->id)
+                    ->whereIn('type_id', [1, 2]) // transfer and market
+                    ->whereNotNull('player_id')
+                    ->orderBy('date', 'asc')
+                    ->get()
+                    ->groupBy('player_id');
+
+                // Get ALL sales for this user (grouped by player)
+                $salesByPlayer = Transaction::where('from_user_id', $user->id)
+                    ->whereIn('type_id', [1, 2]) // transfer and market
+                    ->whereNotNull('player_id')
+                    ->orderBy('date', 'asc')
+                    ->get()
+                    ->groupBy('player_id');
+
+                // Get current squad from API
+                $currentSquad = $this->biwengerApi->getUserSquad($league, $user->biwenger_id);
+                
+                if (empty($currentSquad)) {
+                    Log::warning("No se pudo obtener plantilla para usuario: {$user->name}", [
+                        'user_id' => $user->id,
+                        'biwenger_id' => $user->biwenger_id
+                    ]);
+                    
+                    // Fallback to old method
+                    $teamValues = $this->biwengerApi->getTeamValues($league);
+                    $teamValue = $teamValues[$user->biwenger_id]['value'] ?? 0;
+                    $user->initial_balance = config('leagues.initial_balance') - $teamValue;
+                    $user->save();
+                    continue;
+                }
+                
+                $currentPlayerIds = array_column($currentSquad, 'id');
+
+                // Get all player IDs that have interacted with this user
+                $allPlayerIds = collect($purchasesByPlayer->keys())
+                    ->merge($salesByPlayer->keys())
+                    ->merge($currentPlayerIds)
+                    ->unique()
+                    ->values();
+
+                $initialPlayers = [];
+                
+                // Check each player to determine if they had it from the draft
+                foreach ($allPlayerIds as $playerId) {
+                    $purchases = $purchasesByPlayer->get($playerId, collect());
+                    $sales = $salesByPlayer->get($playerId, collect());
+                    
+                    $firstPurchase = $purchases->first();
+                    $firstSale = $sales->first();
+                    $isInCurrentSquad = in_array($playerId, $currentPlayerIds);
+                    
+                    $hadFromDraft = false;
+                    
+                    // Case 1: Never purchased
+                    if ($purchases->isEmpty()) {
+                        // If sold or currently has it, then had it from draft
+                        if (!$sales->isEmpty() || $isInCurrentSquad) {
+                            $hadFromDraft = true;
+                        }
+                    }
+                    // Case 2: First sale is before first purchase
+                    else if (!$sales->isEmpty() && $firstSale->date < $firstPurchase->date) {
+                        $hadFromDraft = true;
+                    }
+                    
+                    if ($hadFromDraft) {
+                        $initialPlayers[] = $playerId;
+                    }
+                }
+
+                Log::info("Jugadores identificados para {$user->name}", [
+                    'initial_players_count' => count($initialPlayers),
+                    'initial_players' => $initialPlayers
+                ]);
+
+                // Calculate initial team value from player prices on start date
+                $initialTeamValue = 0;
+                $playersWithPrice = 0;
+                $playersWithoutPrice = 0;
+
+                foreach ($initialPlayers as $playerId) {
+                    $price = null;
+                    
+                    // First try: local database
+                    $priceRecord = \App\Models\PlayerPriceHistory::where('biwenger_player_id', $playerId)
+                        ->where('record_date', $league->start_date->format('Y-m-d'))
+                        ->first();
+
+                    if ($priceRecord) {
+                        $price = $priceRecord->price;
+                    } else {
+                        // Second try: fetch from Biwenger API
+                        Log::info("Obteniendo precio desde API para jugador {$playerId}");
+                        $prices = $this->biwengerApi->getPlayerPrices($league, $playerId);
+                        
+                        if (isset($prices[$dateKey])) {
+                            $price = $prices[$dateKey];
+                            Log::info("Precio encontrado en API: {$price}");
+                        }
+                    }
+                    
+                    if ($price) {
+                        $initialTeamValue += $price;
+                        $playersWithPrice++;
+                    } else {
+                        $playersWithoutPrice++;
+                        Log::warning("No se encontró precio inicial para jugador", [
+                            'player_id' => $playerId,
+                            'date' => $league->start_date->format('Y-m-d'),
+                            'user_name' => $user->name
+                        ]);
+                    }
+                }
+
+                // Calculate initial balance
+                $initialBalance = config('leagues.initial_balance') - $initialTeamValue;
+
+                // Update user's initial balance
+                $user->initial_balance = $initialBalance;
+                $user->save();
+
+                Log::info("✅ Balance inicial calculado para: {$user->name}", [
+                    'user_id' => $user->id,
+                    'initial_players_count' => count($initialPlayers),
+                    'players_with_price' => $playersWithPrice,
+                    'players_without_price' => $playersWithoutPrice,
+                    'initial_team_value' => $initialTeamValue,
+                    'initial_balance' => $initialBalance,
+                    'league_start_date' => $league->start_date->format('Y-m-d')
+                ]);
+            }
+
+            Log::info("💰 Cálculo de balances iniciales completado para liga: {$league->name}");
+
+        } catch (\Exception $e) {
+            Log::error("❌ Error calculando balances iniciales para liga {$league->name}: " . $e->getMessage(), [
                 'league_id' => $league->id,
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
