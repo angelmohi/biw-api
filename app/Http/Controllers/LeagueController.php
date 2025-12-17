@@ -34,7 +34,7 @@ class LeagueController extends Controller
         if ($user->isFullAdministrator()) {
             $leagues = League::with(['biwengerUsers' => function($query) {
                 $query->orderBy('position', 'asc');
-            }])->get();
+            }])->orderBy('position', 'asc')->get();
         } else {
             // Get only leagues that the user has access to
             $leagues = League::whereHas('users', function($query) use ($user) {
@@ -42,7 +42,7 @@ class LeagueController extends Controller
                       ->where('user_leagues.is_active', true);
             })->with(['biwengerUsers' => function($query) {
                 $query->orderBy('position', 'asc');
-            }])->get();
+            }])->orderBy('position', 'asc')->get();
         }
 
         return view('leagues.index', compact('leagues'));

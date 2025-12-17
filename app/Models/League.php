@@ -24,6 +24,7 @@ class League extends Model
     protected $guarded = ['id'];
 
     protected $casts = [
+        'position' => 'integer',
         'start_date' => 'date',
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
